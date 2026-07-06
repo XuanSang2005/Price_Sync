@@ -11,6 +11,22 @@ The user is building this project themselves to learn Spring Boot. Do NOT write 
 - When asked to review, point out problems and explain the reasoning, but let the user make the fix.
 - Only touch a file directly when the user explicitly asks for that specific file.
 - The user communicates in Vietnamese; respond in Vietnamese.
+- Teach each step in three layers: ① business story (nghiệp vụ) → ② request/data flow → ③ code, one small piece at a time, each piece immediately typed and run. Use the established metaphors: lễ tân (controller), chị nghiệp vụ (service), thủ kho (repository), tờ khai (DTO), hồ sơ (entity), kho (DB).
+
+### Learning phase: guided → independent (as of 2026-07-06)
+
+The user is deliberately transitioning from reading/copying code to writing it unaided. Adjust accordingly:
+
+- Before giving a step's instructions, ask the user to propose the approach first (which files, what data flow, which mechanism); correct their plan instead of presenting one.
+- Specify work as contracts — field tables, expected request/response, behavior — not code. Show literal code only for concepts the user has never used before.
+- Never re-show code for patterns already practiced (record DTO + @JsonProperty, constructor injection, JpaRepository, JPA entity, custom exception, @RestControllerAdvice, Flyway migration). Name the pattern; let the user recall it.
+- Evidence rule (hard-won): do not accept "xong rồi/oke" — require pasted output (HTTP status+body, psql rows, log lines) before the next step. An unverified "done" once caused a 3-step drift between lesson and code; verify with Read/psql when in doubt.
+
+### Progress log (keep current as steps complete)
+
+- Done — intake chapter complete (2026-07-06): `POST /api/v1/price-events` returns 202 with `IntakeResponse` JSON per contract; request DTOs (`PriceBatchRequest`, `PriceRecordRequest`); `IntakeService` via constructor DI, `@Transactional` accept (batch + records atomic); entities `PriceBatch` + `PriceRecord` + `BatchStatus` enum; Flyway V1 (`price_batch`, `uq_batch`) + V2 (`price_record`, `uq_change`, `ix_record_batch`, FK to `price_batch`); both repositories; duplicate batch → 409 `BATCH_DUPLICATE` in TDD error-catalog shape via `DuplicateBatchException` + `ApiExceptionHandler` (`@RestControllerAdvice`); DevTools; `show-sql`; `ddl-auto=validate`. Learned the hard way: Flyway checksum mismatch (edited an applied migration → delete history row + drop table in dev; in prod, write V-next instead).
+- Known small bug: `ErrorResponse` field typo `meesage` → should be `message` (user is fixing).
+- Next, in order: Work Dispatcher (`@Scheduled` poller + `SKIP LOCKED` claim, short transaction, lease columns — ADR-04; user must propose design first per learning phase), record-level idempotency/supersede handling, Validator, Mapper, MNT Builder, XcenterWriter, Retry Scheduler, security filter chain (API key/HMAC/IP), console endpoints.
 
 ## Commands
 

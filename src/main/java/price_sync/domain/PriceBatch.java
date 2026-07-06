@@ -1,0 +1,56 @@
+package price_sync.domain;
+
+import java.time.OffsetDateTime;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+
+@Entity
+@Table(name = "price_batch")
+public class PriceBatch {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(name = "batch_id", nullable = false)
+    private String batchId;
+
+    @Column(nullable = false)
+    private int version;
+
+    @Column(name = "generated_at")
+    private OffsetDateTime generatedAt;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private BatchStatus status;
+
+    protected PriceBatch(){}
+    public PriceBatch(String batchId, int version, OffsetDateTime generatedAt){
+        this.batchId = batchId;
+        this.version = version;
+        this.generatedAt = generatedAt;
+        this.status = BatchStatus.RECEIVED;
+
+    }
+    public Long getId() {
+        return id;
+    }
+    public String getBatchId() {
+        return batchId;
+    }
+    public int getVersion() {
+        return version;
+    }
+    public BatchStatus getStatus() {
+        return status;
+    }
+
+
+}
