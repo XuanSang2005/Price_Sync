@@ -51,6 +51,9 @@ public class PriceBatch {
     public BatchStatus getStatus() {
         return status;
     }
-
+    public BatchStatus markProcessing(){
+        status = BatchStatus.PROCESSING;
+        return status;
+    }
 
 }

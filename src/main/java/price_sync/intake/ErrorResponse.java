@@ -6,7 +6,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 
 public record ErrorResponse (
     String error, 
-    String meesage,
+    String message,
     @JsonProperty("batch_id") String batchId,
     int version,
     OffsetDateTime ts
