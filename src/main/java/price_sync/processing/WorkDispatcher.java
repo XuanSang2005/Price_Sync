@@ -1,6 +1,7 @@
 package price_sync.processing;
 
 import java.util.Optional;
+import java.util.UUID;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,6 +17,8 @@ public class WorkDispatcher {
 
     private static final Logger log = LoggerFactory.getLogger(WorkDispatcher.class);
     private final PriceBatchRepository priceBatchRepository;
+    private final String instanceId = UUID.randomUUID().toString().substring(0,8);
+
     public WorkDispatcher(PriceBatchRepository priceBatchRepository){
         this.priceBatchRepository = priceBatchRepository;
     }
@@ -31,7 +34,16 @@ public class WorkDispatcher {
         }
         PriceBatch batch = next.get();
         log.info("Da nhan batch id={}, batch_id={}", batch.getId(), batch.getBatchId());
-        batch.markProcessing();
+        batch.markProcessing(instanceId);
+        log.info("Instance dang hoat dong", instanceId);
     }
 
+    @Scheduled(fixedDelay = 60_000)
+    @Transactional
+    public void reap(){
+        int count = priceBatchRepository.reclaimExpired();
+        if (count > 0) {
+            log.warn("Reaper hoi sinh {} batch bi bo roi", count);
+        }
+    }
 }

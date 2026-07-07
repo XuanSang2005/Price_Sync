@@ -27,32 +27,59 @@ public class PriceBatch {
     @Column(name = "generated_at")
     private OffsetDateTime generatedAt;
 
+    @Column(name = "owner_instance")
+    private String ownerInstance;
+
+    @Column(name = "claimed_at")
+    private OffsetDateTime claimedAt;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private BatchStatus status;
 
-    protected PriceBatch(){}
-    public PriceBatch(String batchId, int version, OffsetDateTime generatedAt){
+    protected PriceBatch() {
+    }
+
+    public PriceBatch(String batchId, int version, OffsetDateTime generatedAt) {
         this.batchId = batchId;
         this.version = version;
         this.generatedAt = generatedAt;
         this.status = BatchStatus.RECEIVED;
 
     }
+
     public Long getId() {
         return id;
     }
+
     public String getBatchId() {
         return batchId;
     }
+
     public int getVersion() {
         return version;
     }
+
     public BatchStatus getStatus() {
         return status;
     }
-    public BatchStatus markProcessing(){
+
+    public OffsetDateTime getGeneratedAt() {
+        return generatedAt;
+    }
+
+    public String getOwnerInstance() {
+        return ownerInstance;
+    }
+
+    public OffsetDateTime getClaimedAt() {
+        return claimedAt;
+    }
+
+    public BatchStatus markProcessing(String owner) {
         status = BatchStatus.PROCESSING;
+        ownerInstance = owner;
+        claimedAt = OffsetDateTime.now();
         return status;
     }
 
