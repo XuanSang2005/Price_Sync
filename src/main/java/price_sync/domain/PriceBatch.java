@@ -2,6 +2,7 @@ package price_sync.domain;
 
 import java.time.OffsetDateTime;
 
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -34,7 +35,7 @@ public class PriceBatch {
     private OffsetDateTime claimedAt;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(name = "status", nullable = false)
     private BatchStatus status;
 
     protected PriceBatch() {
@@ -45,7 +46,6 @@ public class PriceBatch {
         this.version = version;
         this.generatedAt = generatedAt;
         this.status = BatchStatus.RECEIVED;
-
     }
 
     public Long getId() {
@@ -82,5 +82,7 @@ public class PriceBatch {
         claimedAt = OffsetDateTime.now();
         return status;
     }
-
+    public void markFail(){
+        status = BatchStatus.FAILED;
+    }
 }
