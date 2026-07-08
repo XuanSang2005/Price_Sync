@@ -37,6 +37,7 @@ public class WorkDispatcher {
         PriceBatch batch = optionalBatch.get();
         log.info("Da nhan batch id={}, batch_id={}, owner={}", batch.getId(), batch.getBatchId(), instanceId);
         batchProcessor.validateBatch(batch.getId());
+        batchProcessor.mapBatch(batch.getId());
     }
 
     @Scheduled(fixedDelay = 60_000)

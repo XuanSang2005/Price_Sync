@@ -95,6 +95,14 @@ public class PriceRecord {
         return id;
     }
 
+    public String getItemId() {
+        return itemId;
+    }
+
+    public String getStoreIdOrZone() {
+        return storeIdOrZone;
+    }
+
     public void markValid(){
         this.validationStatus = RecordStatus.VALID;
     }

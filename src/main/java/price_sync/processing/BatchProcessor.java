@@ -1,5 +1,6 @@
 package price_sync.processing;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
@@ -12,6 +13,7 @@ import price_sync.domain.PriceBatch;
 import price_sync.domain.PriceBatchRepository;
 import price_sync.domain.PriceRecord;
 import price_sync.domain.PriceRecordRepository;
+import price_sync.domain.RecordStatus;
 
 @Component
 public class BatchProcessor {
@@ -19,12 +21,14 @@ public class BatchProcessor {
     private final PriceRecordRepository priceRecordRepository;
     private final PriceBatchRepository priceBatchRepository;
     private final Validator validator;
+    private final Mapper mapper;
 
     public BatchProcessor(PriceRecordRepository priceRecordRepository, Validator validator,
-            PriceBatchRepository priceBatchRepository) {
+            PriceBatchRepository priceBatchRepository, Mapper mapper) {
         this.priceRecordRepository = priceRecordRepository;
         this.validator = validator;
         this.priceBatchRepository = priceBatchRepository;
+        this.mapper = mapper;
     }
 
     @Transactional
@@ -39,7 +43,7 @@ public class BatchProcessor {
     }
 
     @Transactional
-    public void validateBatch(Long batchId) {
+    public boolean validateBatch(Long batchId) {
         int valid = 0, setAside = 0;
         List<PriceRecord> records = priceRecordRepository.findByBatchId(batchId);
         for (PriceRecord record : records) {
@@ -57,9 +61,22 @@ public class BatchProcessor {
             priceBatchRepository.findById(batchId).get().markFail();
             log.warn("Batch {} BI HUY: {}/{} records set aside (ti le hong {}%)",
                     batchId, setAside, records.size(), Math.round(failRate * 100));
+            return false;
         } else {
             log.info("Batch {} qua kiem dinh: {} VALID, {} SET_ASIDE - san sang cho Mapper",
                     batchId, valid, setAside);
+            return true;
+        }
+    }
+
+    @Transactional
+    public void mapBatch(Long batchId){
+        PriceBatch batch = priceBatchRepository.findById(batchId).get();
+        LocalDate businessDate = batch.getGeneratedAt().toLocalDate();
+        List<PriceRecord>records = priceRecordRepository.findByBatchIdAndValidationStatus(batchId, RecordStatus.VALID);
+        for (PriceRecord record : records){
+            MntRow row = mapper.map(record, businessDate);
+            log.info("{}", row);
         }
     }
 
