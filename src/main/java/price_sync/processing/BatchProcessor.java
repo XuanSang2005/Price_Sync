@@ -30,7 +30,8 @@ public class BatchProcessor {
     private final OutputWriter outputWriter;
 
     public BatchProcessor(PriceRecordRepository priceRecordRepository, Validator validator,
-            PriceBatchRepository priceBatchRepository, Mapper mapper, PayloadBuilder payloadBuilder, OutputWriter outputWriter) {
+            PriceBatchRepository priceBatchRepository, Mapper mapper, PayloadBuilder payloadBuilder,
+            OutputWriter outputWriter) {
         this.priceRecordRepository = priceRecordRepository;
         this.validator = validator;
         this.priceBatchRepository = priceBatchRepository;
@@ -42,6 +43,17 @@ public class BatchProcessor {
     @Transactional
     public Optional<PriceBatch> claimNext(String owner) {
         Optional<PriceBatch> next = priceBatchRepository.findNextToClaim();
+        if (next.isEmpty()) {
+            return next;
+        }
+        PriceBatch batch = next.get();
+        batch.markProcessing(owner);
+        return next;
+    }
+
+    @Transactional
+    public Optional<PriceBatch> claimForRetry(String owner) {
+        Optional<PriceBatch> next = priceBatchRepository.findNextToRetry();
         if (next.isEmpty()) {
             return next;
         }
@@ -91,6 +103,12 @@ public class BatchProcessor {
         Path finalFile = outputWriter.write(tempFile, batch);
         log.info("Da ghi file MNT: {}", finalFile);
         batch.markWritten();
+    }
+
+    @Transactional
+    public void markPendingWrite(@NonNull Long bachtId) {
+        PriceBatch batch = priceBatchRepository.findById(bachtId).get();
+        batch.markPendingWrite();
     }
 
 }

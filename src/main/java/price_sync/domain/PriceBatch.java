@@ -2,7 +2,6 @@ package price_sync.domain;
 
 import java.time.OffsetDateTime;
 
-
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -37,6 +36,12 @@ public class PriceBatch {
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
     private BatchStatus status;
+
+    @Column(name = "retry_count", nullable = false)
+    private int retryCount = 0;
+
+    @Column(name = "next_retry_at")
+    private OffsetDateTime nextRetryAt;
 
     protected PriceBatch() {
     }
@@ -82,10 +87,18 @@ public class PriceBatch {
         claimedAt = OffsetDateTime.now();
         return status;
     }
-    public void markFail(){
+
+    public void markFail() {
         status = BatchStatus.FAILED;
     }
-    public void markWritten(){
+
+    public void markWritten() {
         status = BatchStatus.WRITTEN;
+    }
+
+    public void markPendingWrite() {
+        status = BatchStatus.PENDING_WRITE;
+        retryCount += 1;
+        nextRetryAt = OffsetDateTime.now().plusSeconds(Math.min(30L << (this.retryCount - 1), 600L));
     }
 }

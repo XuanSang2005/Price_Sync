@@ -24,4 +24,13 @@ public interface PriceBatchRepository extends JpaRepository<PriceBatch, Long> {
             AND claimed_at < now() - interval '5 minutes'
             """, nativeQuery = true)
     int reclaimExpired();
+
+    @Query(value = """
+            SELECT * FROM price_batch
+    WHERE status = 'PENDING_WRITE' AND next_retry_at <= now()
+    ORDER BY next_retry_at
+    LIMIT 1
+    FOR UPDATE SKIP LOCKED
+    """, nativeQuery = true)
+    Optional<PriceBatch> findNextToRetry();
 }

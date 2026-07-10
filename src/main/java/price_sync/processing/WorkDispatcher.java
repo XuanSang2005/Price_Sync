@@ -26,9 +26,8 @@ public class WorkDispatcher {
         this.batchProcessor = batchProcessor;
     }
 
-    @SuppressWarnings("null")
     @Scheduled(fixedDelay = 10_000)
-    public void poll(){
+    public void poll() {
         log.info("Dispatcher thuc day, dang tim viec");
         Optional<PriceBatch> optionalBatch = batchProcessor.claimNext(instanceId);
         if (optionalBatch.isEmpty()) {
@@ -38,11 +37,12 @@ public class WorkDispatcher {
 
         PriceBatch batch = optionalBatch.get();
         log.info("Da nhan batch id={}, batch_id={}, owner={}", batch.getId(), batch.getBatchId(), instanceId);
-        if (batchProcessor.validateBatch(batch.getId())){
+        if (batchProcessor.validateBatch(batch.getId())) {
             try {
                 batchProcessor.mapBatch(batch.getId());
             } catch (IOException e) {
                 log.error("Loi ghi file MNT cho batch {}", batch.getId(), e);
+                batchProcessor.markPendingWrite(batch.getId());
             }
         }
     }
@@ -54,5 +54,21 @@ public class WorkDispatcher {
         if (count > 0) {
             log.warn("Reaper hoi sinh {} batch bi bo roi", count);
         }
+    }
+
+    @Scheduled(fixedDelay = 15_000)
+    public void retryPending() {
+        Optional<PriceBatch> optionalBatch = batchProcessor.claimForRetry(instanceId);
+        if (optionalBatch.isEmpty())
+            return;
+        PriceBatch batch = optionalBatch.get();
+        log.info("Retry batch id={}", batch.getId());
+        try {
+            batchProcessor.mapBatch(batch.getId()); 
+        } catch (IOException e) {
+            log.error("Retry ghi loi, batch {} ve PENDING_WRITE", batch.getId(), e);
+            batchProcessor.markPendingWrite(batch.getId());
+        }
+
     }
 }
