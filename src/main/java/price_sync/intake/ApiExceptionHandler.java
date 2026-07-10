@@ -13,6 +13,7 @@ public class ApiExceptionHandler {
     public ResponseEntity<ErrorResponse> handleDuplicate(DuplicateBatchException e){
         ErrorResponse body = new ErrorResponse("BATCH_DUPLICATE", e.getMessage(), e.getBatchId(), e.getVersion(), OffsetDateTime.now());
         return ResponseEntity.status(HttpStatus.CONFLICT).body(body);
-    }
-    
+    }    
 }
+
+

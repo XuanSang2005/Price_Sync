@@ -43,6 +43,8 @@ public class PriceBatch {
     @Column(name = "next_retry_at")
     private OffsetDateTime nextRetryAt;
 
+    private static final int MAX_ATTEMPTS = 6;
+
     protected PriceBatch() {
     }
 
@@ -96,9 +98,23 @@ public class PriceBatch {
         status = BatchStatus.WRITTEN;
     }
 
+    public int getRetryCount(){
+        return this.retryCount;
+    }
+
+    public void redrive(){
+        this.status = BatchStatus.PENDING_WRITE;
+        this.retryCount = 0;
+        this.nextRetryAt = OffsetDateTime.now();
+    }
+
     public void markPendingWrite() {
-        status = BatchStatus.PENDING_WRITE;
         retryCount += 1;
-        nextRetryAt = OffsetDateTime.now().plusSeconds(Math.min(30L << (this.retryCount - 1), 600L));
+        if (retryCount >= MAX_ATTEMPTS) {
+            status = BatchStatus.FAILED;
+        } else {
+            status = BatchStatus.PENDING_WRITE;
+            nextRetryAt = OffsetDateTime.now().plusSeconds(Math.min(30L << (this.retryCount - 1), 600L));
+        }
     }
 }

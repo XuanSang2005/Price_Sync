@@ -13,11 +13,13 @@ import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import price_sync.domain.BatchStatus;
 import price_sync.domain.PriceBatch;
 import price_sync.domain.PriceBatchRepository;
 import price_sync.domain.PriceRecord;
 import price_sync.domain.PriceRecordRepository;
 import price_sync.domain.RecordStatus;
+import price_sync.intake.InValidIdException;
 
 @Component
 public class BatchProcessor {
@@ -109,6 +111,22 @@ public class BatchProcessor {
     public void markPendingWrite(@NonNull Long bachtId) {
         PriceBatch batch = priceBatchRepository.findById(bachtId).get();
         batch.markPendingWrite();
+        if (batch.getStatus() == BatchStatus.FAILED) {
+            log.error("CHUONG: Batch {} FAILED sau {} lan ghi that bai - can nguoi xu ly", bachtId,
+                    batch.getRetryCount());
+
+        }
+    }
+
+    @Transactional
+    public boolean retry(Long bacthId) {
+        PriceBatch batch = priceBatchRepository.findById(bacthId).orElseThrow(InValidIdException::new);
+
+        if (batch.getStatus() == BatchStatus.FAILED){
+            batch.redrive();
+            return true;
+        }
+        return false;
     }
 
 }
