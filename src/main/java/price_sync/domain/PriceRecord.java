@@ -71,6 +71,15 @@ public class PriceRecord {
         this.changeType = changeType;
     }
 
+    
+    public String getChangeId() {
+        return changeId;
+    }
+
+    public int getVersion() {
+        return version;
+    }
+
     public BigDecimal getPrice() {
         return price;
     }
@@ -107,9 +116,14 @@ public class PriceRecord {
         this.validationStatus = RecordStatus.VALID;
     }
 
+    public void markSupersede(){
+        this.validationStatus = RecordStatus.SUPERSEDED;
+    }
+
     public void setAside(String reason){
         this.validationStatus = RecordStatus.SET_ASIDE;
         this.setAsideReason = reason;
 
     }
+
 }

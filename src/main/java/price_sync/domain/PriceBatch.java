@@ -97,6 +97,9 @@ public class PriceBatch {
     public void markWritten() {
         status = BatchStatus.WRITTEN;
     }
+    public void markPartial(){
+        status = BatchStatus.PARTIAL;
+    }
 
     public int getRetryCount(){
         return this.retryCount;

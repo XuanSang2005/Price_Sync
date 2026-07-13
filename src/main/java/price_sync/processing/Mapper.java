@@ -4,6 +4,7 @@ import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.stereotype.Component;
 
@@ -12,7 +13,7 @@ import price_sync.domain.PriceRecord;
 
 @Component
 public class Mapper {
-    public MntRow map(PriceRecord record, LocalDate businessDate) {
+    public Optional<MntRow>map(PriceRecord record, LocalDate businessDate) {
         MntRecordType recordType;
         String currency = record.getCurrency();
         LocalDate effStart = record.getEffectiveStart();
@@ -25,7 +26,11 @@ public class Mapper {
         }
         String storeIdOrZone = record.getStoreIdOrZone();
         String[] parts = storeIdOrZone.split("_", 2);
-        String locType = parts[0].equalsIgnoreCase("STORE") ? "S" : "Z";
+        String prefix = parts[0];
+        if (!prefix.equalsIgnoreCase("STORE") && !prefix.equalsIgnoreCase("ZONE")) {
+            return Optional.empty();          
+        }
+        String locType = prefix.equalsIgnoreCase("STORE") ? "S" : "Z";
         String location = parts.length > 1 ? parts[1] : "";
         List<String> columns = new ArrayList<>();
         columns.add(record.getItemId());
@@ -46,6 +51,6 @@ public class Mapper {
 
         }
 
-        return new MntRow(recordType, columns);
+        return Optional.of(new MntRow(recordType, columns));
     }
 }

@@ -1,5 +1,5 @@
 package price_sync.domain;
 
 public enum RecordStatus {
-    PENDING, VALID, SET_ASIDE
+    PENDING, VALID, SET_ASIDE, SUPERSEDED
 }

@@ -4,7 +4,9 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import org.slf4j.Logger;
@@ -97,14 +99,36 @@ public class BatchProcessor {
         LocalDate businessDate = batch.getGeneratedAt().toLocalDate();
         List<MntRow> rows = new ArrayList<>();
         List<PriceRecord> records = priceRecordRepository.findByBatchIdAndValidationStatus(batchId, RecordStatus.VALID);
+        boolean hasSetAside = false;
+        Map<String, Integer> maxVersion = new HashMap<>();
+        for (PriceRecord record : records){
+            maxVersion.merge(record.getChangeId(), record.getVersion(), Math::max);
+        }
+
         for (PriceRecord record : records) {
-            MntRow row = mapper.map(record, businessDate);
-            rows.add(row);
+            if (record.getVersion() < maxVersion.get(record.getChangeId())){
+                record.markSupersede();
+                continue;
+            }
+            Optional<MntRow> result = mapper.map(record, businessDate);
+            if (result.isEmpty()) {
+                record.setAside("UNMAPPABLE_REASON");
+                hasSetAside = true;
+
+            } else {
+                rows.add(result.get());
+            }
         }
         Path tempFile = payloadBuilder.build(rows, businessDate);
         Path finalFile = outputWriter.write(tempFile, batch);
         log.info("Da ghi file MNT: {}", finalFile);
-        batch.markWritten();
+        if (hasSetAside){
+            batch.markPartial();
+        }
+        else{
+            batch.markWritten();
+        }
+
     }
 
     @Transactional
@@ -114,15 +138,13 @@ public class BatchProcessor {
         if (batch.getStatus() == BatchStatus.FAILED) {
             log.error("CHUONG: Batch {} FAILED sau {} lan ghi that bai - can nguoi xu ly", bachtId,
                     batch.getRetryCount());
-
         }
     }
 
     @Transactional
     public boolean retry(Long bacthId) {
         PriceBatch batch = priceBatchRepository.findById(bacthId).orElseThrow(InValidIdException::new);
-
-        if (batch.getStatus() == BatchStatus.FAILED){
+        if (batch.getStatus() == BatchStatus.FAILED) {
             batch.redrive();
             return true;
         }
