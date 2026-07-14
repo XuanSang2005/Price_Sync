@@ -15,13 +15,16 @@ public class SecurityConfig {
     private final String apiKey;
     private final List<String> ipAllowList;
     private final String hmacSecret;
+    private final Long timeStampt;
 
     public SecurityConfig(@Value("${app.security.api-key}") String apiKey,
             @Value("${app.security.ip-allowlist}") List<String> ipAllowList,
-            @Value("${app.security.hmac-secret}") String hmacSecret) {
+            @Value("${app.security.hmac-secret}") String hmacSecret,
+            @Value("${app.security.timestamp-window-seconds}") Long timeStampt) {
         this.apiKey = apiKey;
         this.ipAllowList = ipAllowList;
         this.hmacSecret = hmacSecret;
+        this.timeStampt = timeStampt;
     }
 
     @Bean
@@ -31,7 +34,8 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth.anyRequest().permitAll())
                 .addFilterBefore(new ApiKeyFilter(apiKey), UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(new IpAllowListFilter(ipAllowList), ApiKeyFilter.class)
-                .addFilterBefore(new HmacFIlter(hmacSecret), ApiKeyFilter.class);
+                .addFilterBefore(new HmacFIlter(hmacSecret), ApiKeyFilter.class)
+                .addFilterBefore(new TimestampFilter(timeStampt), HmacFIlter.class);
         return http.build();
     }
 }

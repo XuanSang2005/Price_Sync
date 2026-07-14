@@ -29,9 +29,11 @@ public class HmacFIlter extends OncePerRequestFilter {
     protected void doFilterInternal(@NonNull HttpServletRequest request, @NonNull HttpServletResponse response,
             @NonNull FilterChain filterChain) throws ServletException, IOException {
         CachedBodyHttpServletRequest cached = new CachedBodyHttpServletRequest(request);
+        String ts = request.getHeader("X-Timestamp");
         byte[] body = cached.getBody();
+        String data = ts + new String(body, StandardCharsets.UTF_8);
 
-        String computed = computeHmac(body);
+        String computed = computeHmac(data);
         String received = request.getHeader("X-Signature");
 
         if (received == null || !computed.equals((received))) {
@@ -41,11 +43,11 @@ public class HmacFIlter extends OncePerRequestFilter {
         filterChain.doFilter(cached, response);
     }
 
-    private String computeHmac(byte[] body) {
+    private String computeHmac(String data) {
         try {
             Mac mac = Mac.getInstance("HmacSHA256");
             mac.init(new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
-            byte[] hmac = mac.doFinal(body);
+            byte[] hmac = mac.doFinal(data.getBytes(StandardCharsets.UTF_8));
             return HexFormat.of().formatHex(hmac);
         } catch (NoSuchAlgorithmException | InvalidKeyException e) {
             throw new RuntimeException(e);
