@@ -12,12 +12,16 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 
 @Configuration
 public class SecurityConfig {
-    private final String apiKey; 
+    private final String apiKey;
     private final List<String> ipAllowList;
+    private final String hmacSecret;
 
-    public SecurityConfig(@Value("${app.security.api-key}") String apiKey, @Value("${app.security.ip-allowlist}") List<String> ipAllowList) { 
+    public SecurityConfig(@Value("${app.security.api-key}") String apiKey,
+            @Value("${app.security.ip-allowlist}") List<String> ipAllowList,
+            @Value("${app.security.hmac-secret}") String hmacSecret) {
         this.apiKey = apiKey;
         this.ipAllowList = ipAllowList;
+        this.hmacSecret = hmacSecret;
     }
 
     @Bean
@@ -26,7 +30,8 @@ public class SecurityConfig {
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth.anyRequest().permitAll())
                 .addFilterBefore(new ApiKeyFilter(apiKey), UsernamePasswordAuthenticationFilter.class)
-                .addFilterBefore(new IpAllowListFilter(ipAllowList), ApiKeyFilter.class);
+                .addFilterBefore(new IpAllowListFilter(ipAllowList), ApiKeyFilter.class)
+                .addFilterBefore(new HmacFIlter(hmacSecret), ApiKeyFilter.class);
         return http.build();
     }
 }
