@@ -1,0 +1,431 @@
+{
+  "info": {
+    "name": "price_sync API",
+    "description": "Bo test toan bo API price_sync tinh den hien tai: Intake (bao mat 4 lop), Retry, Console read.\n\nCACH DUNG:\n1. App phai dang chay o http://localhost:8080 (./mvnw spring-boot:run).\n2. Import file nay vao Postman.\n3. Chay bang Collection Runner THEO THU TU (vi 409 phu thuoc 202, va detail phu thuoc list).\n4. Rieng Retry 202/200 phu thuoc trang thai batch that -> dat bien failedId / okId = id batch tuong ung (xem mo ta tung request).\n\nChu ky HMAC duoc tinh tu dong o pre-request script cua folder Intake: sig = HMAC-SHA256(timestamp + body, secret) -> hex, header X-Signature; timestamp -> header X-Timestamp.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1. Intake (secured)",
+      "description": "POST /api/v1/price-events - endpoint duy nhat bi khoa 4 lop bao mat (IP allowlist / HMAC / API key / timestamp). Pre-request script cua folder tu ky moi request trong folder nay.",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "// ==== Ky request intake ====",
+              "// batch_id moi cho moi lan chay (de 202 khong bi trung idempotency)",
+              "pm.collectionVariables.set('batchId', 'pm-' + Date.now());",
+              "// timestamp: giay epoch",
+              "var ts = Math.floor(Date.now() / 1000);",
+              "// body sau khi thay {{...}} (phai khop dung byte server nhan)",
+              "var raw = (pm.request.body && pm.request.body.raw) ? pm.request.body.raw : '';",
+              "var body = pm.variables.replaceIn(raw);",
+              "// chu ky = HMAC-SHA256(timestamp + body, secret) -> hex",
+              "var secret = pm.collectionVariables.get('hmacSecret');",
+              "var sig = CryptoJS.HmacSHA256(String(ts) + body, secret).toString(CryptoJS.enc.Hex);",
+              "pm.collectionVariables.set('ts', String(ts));",
+              "pm.collectionVariables.set('sig', sig);"
+            ]
+          }
+        }
+      ],
+      "item": [
+        {
+          "name": "202 - Batch hop le",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('202 Accepted', function () { pm.response.to.have.status(202); });",
+                  "// luu lai batch_id vua tao de request 409 gui trung",
+                  "pm.collectionVariables.set('dupBatchId', pm.collectionVariables.get('batchId'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-Api-Key", "value": "{{apiKey}}" },
+              { "key": "X-Timestamp", "value": "{{ts}}" },
+              { "key": "X-Signature", "value": "{{sig}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"batch_id\":\"{{batchId}}\",\"version\":1,\"generated_at\":\"2026-07-16T02:00:00Z\",\"records\":[{\"change_id\":\"{{batchId}}-c1\",\"version\":1,\"item_id\":\"SKU900\",\"store_id_or_zone\":\"STORE_001\",\"price\":100000,\"currency\":\"VND\",\"effective_start\":\"2026-07-17\",\"effective_end\":null,\"change_type\":\"new\"}]}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/price-events",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "price-events"]
+            },
+            "description": "Batch hop le + du 4 header -> 202 Accepted. Test 202 luu batch_id vao dupBatchId cho request 409."
+          }
+        },
+        {
+          "name": "409 - Batch trung (gui lai)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('409 Duplicate', function () { pm.response.to.have.status(409); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-Api-Key", "value": "{{apiKey}}" },
+              { "key": "X-Timestamp", "value": "{{ts}}" },
+              { "key": "X-Signature", "value": "{{sig}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"batch_id\":\"{{dupBatchId}}\",\"version\":1,\"generated_at\":\"2026-07-16T02:00:00Z\",\"records\":[{\"change_id\":\"{{dupBatchId}}-c1\",\"version\":1,\"item_id\":\"SKU900\",\"store_id_or_zone\":\"STORE_001\",\"price\":100000,\"currency\":\"VND\",\"effective_start\":\"2026-07-17\",\"effective_end\":null,\"change_type\":\"new\"}]}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/price-events",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "price-events"]
+            },
+            "description": "Gui lai dung batch_id + version cua request 202 -> uq_batch -> 409 BATCH_DUPLICATE. PHAI chay sau request 202."
+          }
+        },
+        {
+          "name": "401 - Sai API key",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('401 sai API key', function () { pm.response.to.have.status(401); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-Api-Key", "value": "wrong-key-xxx" },
+              { "key": "X-Timestamp", "value": "{{ts}}" },
+              { "key": "X-Signature", "value": "{{sig}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"batch_id\":\"{{batchId}}\",\"version\":1,\"generated_at\":\"2026-07-16T02:00:00Z\",\"records\":[{\"change_id\":\"{{batchId}}-c1\",\"version\":1,\"item_id\":\"SKU900\",\"store_id_or_zone\":\"STORE_001\",\"price\":100000,\"currency\":\"VND\",\"effective_start\":\"2026-07-17\",\"effective_end\":null,\"change_type\":\"new\"}]}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/price-events",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "price-events"]
+            },
+            "description": "Timestamp + chu ky hop le, nhung X-Api-Key sai -> ApiKeyFilter chan 401."
+          }
+        },
+        {
+          "name": "401 - Sai chu ky HMAC",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Ghi de chu ky bang gia tri rac -> HMAC filter chan 401",
+                  "pm.collectionVariables.set('sig', 'deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef');"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('401 sai chu ky', function () { pm.response.to.have.status(401); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-Api-Key", "value": "{{apiKey}}" },
+              { "key": "X-Timestamp", "value": "{{ts}}" },
+              { "key": "X-Signature", "value": "{{sig}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"batch_id\":\"{{batchId}}\",\"version\":1,\"generated_at\":\"2026-07-16T02:00:00Z\",\"records\":[{\"change_id\":\"{{batchId}}-c1\",\"version\":1,\"item_id\":\"SKU900\",\"store_id_or_zone\":\"STORE_001\",\"price\":100000,\"currency\":\"VND\",\"effective_start\":\"2026-07-17\",\"effective_end\":null,\"change_type\":\"new\"}]}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/price-events",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "price-events"]
+            },
+            "description": "API key + timestamp hop le, nhung X-Signature bi ghi de thanh rac -> HmacFilter chan 401."
+          }
+        },
+        {
+          "name": "401 - Timestamp het han",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Ky lai voi timestamp qua khu (>300s): HMAC van hop le nhung cua so thoi gian chan 401",
+                  "var ts = Math.floor(Date.now() / 1000) - 4000;",
+                  "var raw = (pm.request.body && pm.request.body.raw) ? pm.request.body.raw : '';",
+                  "var body = pm.variables.replaceIn(raw);",
+                  "var secret = pm.collectionVariables.get('hmacSecret');",
+                  "var sig = CryptoJS.HmacSHA256(String(ts) + body, secret).toString(CryptoJS.enc.Hex);",
+                  "pm.collectionVariables.set('ts', String(ts));",
+                  "pm.collectionVariables.set('sig', sig);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('401 timestamp het han', function () { pm.response.to.have.status(401); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-Api-Key", "value": "{{apiKey}}" },
+              { "key": "X-Timestamp", "value": "{{ts}}" },
+              { "key": "X-Signature", "value": "{{sig}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"batch_id\":\"{{batchId}}\",\"version\":1,\"generated_at\":\"2026-07-16T02:00:00Z\",\"records\":[{\"change_id\":\"{{batchId}}-c1\",\"version\":1,\"item_id\":\"SKU900\",\"store_id_or_zone\":\"STORE_001\",\"price\":100000,\"currency\":\"VND\",\"effective_start\":\"2026-07-17\",\"effective_end\":null,\"change_type\":\"new\"}]}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/price-events",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "price-events"]
+            },
+            "description": "Chu ky khop (ky voi ts cu) nhung ts lech 4000s > cua so 300s -> TimestampFilter chan 401."
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Retry (re-drive)",
+      "description": "POST /api/v1/events/{id}/retry - KHONG bi khoa security (shouldNotFilter chi giu /price-events).",
+      "item": [
+        {
+          "name": "404 - id khong ton tai",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('404 id khong ton tai', function () { pm.response.to.have.status(404); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/events/99999/retry",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "events", "99999", "retry"]
+            },
+            "description": "id khong co trong DB -> InValidIdException -> 404."
+          }
+        },
+        {
+          "name": "202 - Re-drive batch FAILED",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('202 re-drive FAILED', function () { pm.response.to.have.status(202); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/events/{{failedId}}/retry",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "events", "{{failedId}}", "retry"]
+            },
+            "description": "PHU THUOC DU LIEU: dat bien failedId = id mot batch dang FAILED -> redrive -> 202. Neu batch khong FAILED se ra 200 (test that bai la binh thuong)."
+          }
+        },
+        {
+          "name": "200 - Retry batch khong FAILED (no-op)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 khong phai FAILED -> no-op', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/events/{{okId}}/retry",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "events", "{{okId}}", "retry"]
+            },
+            "description": "PHU THUOC DU LIEU: dat bien okId = id mot batch KHONG FAILED (vd WRITTEN) -> guard chan -> 200 no-op."
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Console read",
+      "description": "GET /api/v1/events (list), /events/{id} (detail), /events/metrics. KHONG bi khoa security.",
+      "item": [
+        {
+          "name": "200 - Danh sach events",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 list', function () { pm.response.to.have.status(200); });",
+                  "// luu id dau tien de request detail dung",
+                  "var arr = pm.response.json();",
+                  "if (Array.isArray(arr) && arr.length) { pm.collectionVariables.set('detailId', arr[0].id); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/events",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "events"]
+            },
+            "description": "Tra ve mang toan bo batch. Test luu id[0] vao detailId cho request detail."
+          }
+        },
+        {
+          "name": "200 - Metrics (dem theo status)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 metrics', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/events/metrics",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "events", "metrics"]
+            },
+            "description": "Dem batch theo tung status (day du moi status, trong = 0). Kiem luon bay routing: /events/metrics (literal) khong bi nham thanh /events/{id}."
+          }
+        },
+        {
+          "name": "200 - Chi tiet 1 event",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 detail', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/events/{{detailId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "events", "{{detailId}}"]
+            },
+            "description": "Chi tiet batch + records. detailId lay tu request list (chay list truoc). Mac dinh = 1 neu chua chay list."
+          }
+        },
+        {
+          "name": "404 - Chi tiet id khong ton tai",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('404 detail khong ton tai', function () { pm.response.to.have.status(404); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/events/99999",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "events", "99999"]
+            },
+            "description": "id khong ton tai -> InValidIdException -> 404."
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8080" },
+    { "key": "apiKey", "value": "hq-secret-key-123" },
+    { "key": "hmacSecret", "value": "shared-secret-abc" },
+    { "key": "batchId", "value": "" },
+    { "key": "dupBatchId", "value": "" },
+    { "key": "ts", "value": "" },
+    { "key": "sig", "value": "" },
+    { "key": "detailId", "value": "1" },
+    { "key": "failedId", "value": "1" },
+    { "key": "okId", "value": "1" }
+  ]
+}
