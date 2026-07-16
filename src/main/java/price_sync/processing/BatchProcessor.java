@@ -138,7 +138,6 @@ public class BatchProcessor {
             batch.markWritten();
         }
         recordLog(batch.getId(), batch.getStatus(), null);
-
     }
 
     @Transactional
