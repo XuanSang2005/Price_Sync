@@ -24,3 +24,16 @@ export type EventDetail = {
   generated_at: string
   records: EventRecord[]
 }
+
+// Một dòng nhật ký vòng đời batch (GET /api/v1/events/{id}/logs)
+export type EventLog = {
+  status: string
+  note: string | null
+  created_at: string
+}
+
+// Một dòng cấu hình (GET /api/v1/config)
+export type ConfigItem = {
+  config_key: string
+  config_value: string
+}

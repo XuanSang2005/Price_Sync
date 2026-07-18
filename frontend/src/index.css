@@ -1,1 +1,6 @@
 @import "tailwindcss";
+
+/* Báo trình duyệt đây là app tối → scrollbar, input mặc định... tự render kiểu dark */
+:root {
+  color-scheme: dark;
+}
