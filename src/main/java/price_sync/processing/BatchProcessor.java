@@ -1,6 +1,7 @@
 package price_sync.processing;
 
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -136,6 +137,7 @@ public class BatchProcessor {
         }
         Path tempFile = payloadBuilder.build(rows, businessDate);
         Path finalFile = outputWriter.write(tempFile, batch);
+        Files.deleteIfExists(tempFile); 
         log.info("Da ghi file MNT: {}", finalFile);
         if (hasSetAside) {
             batch.markPartial();
