@@ -10,18 +10,22 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import price_sync.domain.ConfigRepository;
 
 public class TimestampFilter extends OncePerRequestFilter {
 
-    private final long allowSkewSeconds;
+    private final ConfigRepository configRepository;
 
-    public TimestampFilter(long allowSkewSeconds) {
-        this.allowSkewSeconds = allowSkewSeconds;
+    public TimestampFilter(ConfigRepository configRepository) {
+        this.configRepository = configRepository;
     }
 
     @Override
     public void doFilterInternal(@NonNull HttpServletRequest request, @NonNull HttpServletResponse response,
             @NonNull FilterChain filterChain) throws IOException, ServletException {
+
+        String raw = configRepository.findByConfigKey("replay_skew_min").map(c -> c.getConfigValue()).orElse("5");
+        Long allowSkewSeconds = Long.parseLong(raw) * 60;
         Long now = OffsetDateTime.now().toEpochSecond();
         String header = request.getHeader("X-Timestamp");
         if (header == null) {

@@ -1,5 +1,6 @@
 package price_sync.security;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Value;
@@ -10,21 +11,20 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
+import price_sync.domain.ConfigRepository;
+
 @Configuration
 public class SecurityConfig {
     private final String apiKey;
-    private final List<String> ipAllowList;
     private final String hmacSecret;
-    private final Long timeStampt;
+    private final ConfigRepository configRepository;
 
     public SecurityConfig(@Value("${app.security.api-key}") String apiKey,
-            @Value("${app.security.ip-allowlist}") List<String> ipAllowList,
             @Value("${app.security.hmac-secret}") String hmacSecret,
-            @Value("${app.security.timestamp-window-seconds}") Long timeStampt) {
+            ConfigRepository configRepository) {
         this.apiKey = apiKey;
-        this.ipAllowList = ipAllowList;
         this.hmacSecret = hmacSecret;
-        this.timeStampt = timeStampt;
+        this.configRepository = configRepository;
     }
 
     @Bean
@@ -33,9 +33,9 @@ public class SecurityConfig {
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth.anyRequest().permitAll())
                 .addFilterBefore(new ApiKeyFilter(apiKey), UsernamePasswordAuthenticationFilter.class)
-                .addFilterBefore(new IpAllowListFilter(ipAllowList), ApiKeyFilter.class)
+                .addFilterBefore(new IpAllowListFilter(configRepository), ApiKeyFilter.class)
                 .addFilterBefore(new HmacFIlter(hmacSecret), ApiKeyFilter.class)
-                .addFilterBefore(new TimestampFilter(timeStampt), HmacFIlter.class);
+                .addFilterBefore(new TimestampFilter(configRepository), HmacFIlter.class);
         return http.build();
     }
 }

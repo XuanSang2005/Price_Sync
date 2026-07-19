@@ -1,15 +1,18 @@
 package price_sync.processing;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.nio.file.Path;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import price_sync.domain.BatchLogRepository;
@@ -32,6 +35,11 @@ public class BatchProcessorTest {
 
     private final BatchProcessor processor = new BatchProcessor(priceRecordRepository, new Validator(),
             priceBatchRepository, new Mapper(), builder, writer, batchLogRepository, configRepository);
+
+    @BeforeEach
+    void stubBuilder() throws IOException{
+        when(builder.build(any(), any())).thenReturn(Path.of("dummy.mnt"));
+    }
 
     @Test
     public void qua_20_pt_bi_setAside_thi_fail() {
@@ -64,12 +72,12 @@ public class BatchProcessorTest {
 
     private PriceRecord recordHopLe() {
         return new PriceRecord(1L, "c", 1, "SKU", "STORE_1",
-                new BigDecimal("100"), "VND", null, null, "new");
+                new BigDecimal("100"), "VND", null, null, "new", null);
     }
 
     private PriceRecord recordGiaAm() {
         return new PriceRecord(1L, "c", 1, "SKU", "STORE_1",
-                new BigDecimal("-1"), "VND", null, null, "new");
+                new BigDecimal("-1"), "VND", null, null, "new", null);
     }
 
     @Test
@@ -99,21 +107,20 @@ public class BatchProcessorTest {
 
     private PriceRecord recordUnmappable() {
         return new PriceRecord(1L, "c", 1, "SKU", "XYC_1",
-                new BigDecimal("-1"), "VND", null, null, "new");
+                new BigDecimal("-1"), "VND", null, null, "new", null);
     }
 
     @Test
-    public void mapBatch_neu_co_version_cao_hon_thi_Supersede() throws IOException{
+    public void mapBatch_neu_co_version_cao_hon_thi_Supersede() throws IOException {
         PriceBatch priceBatch = new PriceBatch("aaa", 2, OffsetDateTime.now());
         when(priceBatchRepository.findById(1L)).thenReturn(Optional.of(priceBatch));
 
-        PriceRecord cu  = new PriceRecord(1L, "chgA", 1, "SKU1", "STORE_001",
-                new BigDecimal("100"), "VND", null, null, "new");
+        PriceRecord cu = new PriceRecord(1L, "chgA", 1, "SKU1", "STORE_001",
+                new BigDecimal("100"), "VND", null, null, "new", null);
         PriceRecord moi = new PriceRecord(1L, "chgA", 2, "SKU1", "STORE_001",
-                new BigDecimal("100"), "VND", null, null, "new");
+                new BigDecimal("100"), "VND", null, null, "new", null);
         when(priceRecordRepository.findByBatchIdAndValidationStatus(1L, RecordStatus.VALID))
                 .thenReturn(List.of(cu, moi));
-
 
         processor.mapBatch(1L);
         assertThat(cu.getValidationStatus()).isEqualTo(RecordStatus.SUPERSEDED);
@@ -121,21 +128,21 @@ public class BatchProcessorTest {
     }
 
     @Test
-    public void claimNext_neu_ko_tim_thay_thi_Empty(){
+    public void claimNext_neu_ko_tim_thay_thi_Empty() {
         when(priceBatchRepository.findNextToClaim()).thenReturn(Optional.empty());
         Optional<PriceBatch> batch = processor.claimNext(null);
-        
+
         assertThat(batch).isEmpty();
     }
 
-    @Test 
-    public void claimNext_neu_tim_thay_thi_tra_ve_batch(){
+    @Test
+    public void claimNext_neu_tim_thay_thi_tra_ve_batch() {
         PriceBatch priceBatch = new PriceBatch("b1", 1, OffsetDateTime.now());
 
         when(priceBatchRepository.findNextToClaim()).thenReturn(Optional.of(priceBatch));
-        
+
         Optional<PriceBatch> batch = processor.claimNext("owner-1");
-        
+
         assertThat(batch).isPresent();
         assertThat(priceBatch.getStatus()).isEqualTo(BatchStatus.PROCESSING);
     }

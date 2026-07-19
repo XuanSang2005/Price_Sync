@@ -16,7 +16,7 @@ public class ValidatorTest {
     @Test
     void record_hop_le_thi_khong_bi_set_aside() {
         PriceRecord record = new PriceRecord(1L, "c1", 1, "SKU1", "STORE_001",
-                new BigDecimal("100"), "VND", LocalDate.of(2026, 7, 17), null, "new");
+                new BigDecimal("100"), "VND", LocalDate.of(2026, 7, 17), null, "new", null);
         Optional<String> reason = validator.validate(record);
 
         assertThat(reason).isEmpty();
@@ -25,7 +25,7 @@ public class ValidatorTest {
     @Test
     void gia_am_bi_set_aside() {
         PriceRecord record = new PriceRecord(1L, "c1", 1, "SKU1", "STORE_001",
-                new BigDecimal("-999"), "VND", LocalDate.of(2026, 7, 17), null, "new");
+                new BigDecimal("-999"), "VND", LocalDate.of(2026, 7, 17), null, "new", null);
         Optional<String> reason = validator.validate(record);
 
         assertThat(reason).contains(("INVALID_PRICE"));
@@ -34,7 +34,7 @@ public class ValidatorTest {
 
     @Test
     void delete_khong_can_gi() {
-        PriceRecord record = new PriceRecord(null, null, 0, null, null, null, null, null, null, "delete");
+        PriceRecord record = new PriceRecord(null, null, 0, null, null, null, null, null, null, "delete", null);
 
         Optional<String> reason = validator.validate(record);
 
@@ -43,7 +43,7 @@ public class ValidatorTest {
 
     @Test
     void sai_change_type() {
-        PriceRecord record = new PriceRecord(null, null, 0, null, null, null, null, null, null, "sai");
+        PriceRecord record = new PriceRecord(null, null, 0, null, null, null, null, null, null, "sai", null);
 
         Optional<String> reason = validator.validate(record);
 
@@ -53,7 +53,7 @@ public class ValidatorTest {
     @Test
     void sai_currency() {
         PriceRecord record = new PriceRecord(1L, "c1", 1, "SKU1", "STORE_001",
-                new BigDecimal("100"), "VNDD", LocalDate.of(2026, 7, 17), null, "new");
+                new BigDecimal("100"), "VNDD", LocalDate.of(2026, 7, 17), null, "new", null);
         Optional<String> reason = validator.validate(record);
 
         assertThat(reason).contains("INVALID_CURRENCY");
@@ -62,7 +62,7 @@ public class ValidatorTest {
     @Test 
     void sai_khoang_ngay(){
        PriceRecord record = new PriceRecord(1L, "c1", 1, "SKU1", "STORE_001",
-                new BigDecimal("100"), "VND", LocalDate.of(2026, 9, 17), LocalDate.of(2026, 8, 17), "new");
+                new BigDecimal("100"), "VND", LocalDate.of(2026, 9, 17), LocalDate.of(2026, 8, 17), "new", null);
                         Optional<String> reason = validator.validate(record);
 
         assertThat(reason).contains("INVALID_DATE_RANGE");

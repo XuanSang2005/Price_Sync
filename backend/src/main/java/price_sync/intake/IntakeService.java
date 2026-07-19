@@ -41,7 +41,7 @@ public class IntakeService {
         for (PriceRecordRequest record : batch.records()) {
             records.add(new PriceRecord(parentId, record.changeId(), record.version(), record.itemId(),
                     record.storeIdOrZone(), record.price(), record.currency(), record.effectiveStart(),
-                    record.effectiveEnd(), record.changeType()));
+                    record.effectiveEnd(), record.changeType(), record.extras()));
         }
         priceRecordRepository.saveAll(records);
         batchLogRepository.save(new BatchLog(saved.getId(), saved.getStatus(),batch.records().size() + " records"));

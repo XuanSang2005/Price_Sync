@@ -17,7 +17,7 @@ public class MapperTest {
     @Test
     public void new_store_ra_FDETL() {
         PriceRecord record = new PriceRecord(1L, "c1", 1, "SKU1", "STORE_001",
-                new BigDecimal("100"), null, LocalDate.of(2026, 07, 17), null, "new");
+                new BigDecimal("100"), null, LocalDate.of(2026, 07, 17), null, "new", null);
         Optional<MntRow> result = mapper.map(record, bussiLocalDate);
         assertThat(result).isPresent();
         MntRow row = result.get();
@@ -28,7 +28,7 @@ public class MapperTest {
     @Test
     public void delete_ra_FDELE() {
         PriceRecord record = new PriceRecord(1L, "c1", 1, "SKU1", "STORE_001",
-                null, null, null, null, "delete");
+                null, null, null, null, "delete", null);
         Optional<MntRow> result = mapper.map(record, bussiLocalDate);
         assertThat(result).isPresent();
         MntRow row = result.get();
@@ -39,7 +39,7 @@ public class MapperTest {
     @Test
     public void zone_ra_Z() {
         PriceRecord record = new PriceRecord(1L, "c1", 1, "SKU1", "ZONE_NORTH",
-                null, null, null, null, "delete");
+                null, null, null, null, "delete", null);
         Optional<MntRow> result = mapper.map(record, bussiLocalDate);
         assertThat(result).isPresent();
         MntRow row = result.get();
@@ -50,7 +50,7 @@ public class MapperTest {
     @Test
     public void khong_map_ra_duoc_empty() {
         PriceRecord record = new PriceRecord(1L, "c1", 1, "SKU1", "XYZ_001",
-                null, null, null, null, "delete");
+                null, null, null, null, "delete", null);
         Optional<MntRow> result = mapper.map(record, bussiLocalDate);
         assertThat(result).isEmpty();
     }
@@ -58,7 +58,7 @@ public class MapperTest {
     @Test
     public void currency_mac_dinh_VND() {
         PriceRecord record = new PriceRecord(1L, "c1", 1, "SKU1", "ZONE_NORTH",
-                BigDecimal.valueOf(100), null, null, null, "new");
+                BigDecimal.valueOf(100), null, null, null, "new", null);
         Optional<MntRow> result = mapper.map(record, bussiLocalDate);
         assertThat(result).isPresent();
         MntRow row = result.get();

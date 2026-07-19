@@ -2,6 +2,10 @@ package price_sync.domain;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.Map;
+
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -54,11 +58,15 @@ public class PriceRecord {
     @Column(name = "set_aside_reason")
     private String setAsideReason;
 
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "extras")
+    private Map<String, Object> extras;
+
     protected PriceRecord() {
     }
 
     public PriceRecord(Long batchId, String changeId, int version, String itemId, String storeIdOrZone,
-            BigDecimal price, String currency, LocalDate effectiveStart, LocalDate effectiveEnd, String changeType) {
+            BigDecimal price, String currency, LocalDate effectiveStart, LocalDate effectiveEnd, String changeType, Map<String, Object> extras) {
         this.batchId = batchId;
         this.changeId = changeId;
         this.version = version;
@@ -69,6 +77,7 @@ public class PriceRecord {
         this.effectiveStart = effectiveStart;
         this.effectiveEnd = effectiveEnd;
         this.changeType = changeType;
+        this.extras = extras;
     }
 
     
@@ -136,6 +145,10 @@ public class PriceRecord {
         this.validationStatus = RecordStatus.SET_ASIDE;
         this.setAsideReason = reason;
 
+    }
+
+    public Map<String, Object> getExtras() {
+        return extras;
     }
 
 }

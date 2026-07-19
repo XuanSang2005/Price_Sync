@@ -1,6 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useState, useEffect } from 'react'
 import type { ConfigItem } from '../../types'
+import { MappingsTab } from '../../components/MappingsTab'
 
 // "/config" — trang cấu hình theo bố cục TDD (Connections / Mappings / Processing).
 // Nguyên tắc TRUNG THỰC: field nào có config_key trong DB → sửa + lưu được thật;
@@ -20,33 +21,15 @@ type FieldDef = {
 }
 
 // Tab Connections — thẻ HQ intake
-const HQ_FIELDS: FieldDef[] = [
-  {
-    configKey: 'hq_api_key_ref',
-    label: 'API key — secret reference',
-    badge: 'SECRET STORE',
-    placeholder: 'kv/pricesync/hq-api-key',
-  },
-  {
-    configKey: 'hq_hmac_secret_ref',
-    label: 'HMAC secret — secret reference',
-    badge: 'SECRET STORE',
-    placeholder: 'kv/pricesync/hq-hmac',
-  },
-]
+// (secret không xuất hiện ở đây — kể cả tham chiếu: chìa thật nằm ở env var trên server,
+//  đổi chìa = sửa env + restart, không đi qua console. ADR-11)
 const HQ_FIELDS_SMALL: FieldDef[] = [
-  { configKey: 'rate_limit_per_min', label: 'Rate limit / min', placeholder: '5' },
   { configKey: 'replay_skew_min', label: 'Replay skew ± min', placeholder: '5' },
 ]
 
 // Tab Connections — thẻ Xcenter output
 const XCENTER_FIELDS: FieldDef[] = [
   { configKey: 'xcenter_inbound_path', label: 'Inbound path', placeholder: '/mnt/xcenter/inbound' },
-  {
-    configKey: 'pickup_mode',
-    label: 'Pickup mode',
-    placeholder: 'in_place — write complete file under final name (ADR-05)',
-  },
   {
     configKey: 'filename_pattern',
     label: 'Filename pattern',
@@ -96,7 +79,7 @@ function ConfigField({
         disabled={!exists}
         placeholder={field.placeholder}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full font-mono text-sm bg-zinc-950 border border-zinc-700 rounded-lg px-3.5 py-2.5 text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-500 disabled:opacity-50 disabled:cursor-not-allowed"
+        className="w-full font-mono text-sm bg-zinc-900 border border-zinc-700 rounded-lg px-3.5 py-2.5 text-zinc-100 placeholder:text-zinc-600 hover:border-zinc-600 focus:outline-none focus:border-zinc-400 focus:bg-zinc-800/80 disabled:opacity-50 disabled:cursor-not-allowed"
       />
       {field.note !== undefined && <p className="text-xs text-zinc-600 mt-1.5">{field.note}</p>}
     </div>
@@ -106,7 +89,7 @@ function ConfigField({
 // Chip 1 địa chỉ IP trong allowlist (có nút × để gỡ)
 function IpChip({ ip, onRemove, canEdit }: { ip: string; onRemove: () => void; canEdit: boolean }) {
   return (
-    <span className="inline-flex items-center gap-2 font-mono text-sm text-zinc-200 border border-zinc-700 rounded-lg px-3 py-1.5">
+    <span className="inline-flex items-center gap-2 font-mono text-sm text-zinc-100 bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-1.5">
       {ip}
       {canEdit && (
         <button onClick={onRemove} className="text-zinc-500 hover:text-red-400">
@@ -226,25 +209,22 @@ function ConfigPage() {
   }
 
   return (
-    <div>
-      {/* ===== Tiêu đề ===== */}
-      <h1 className="text-2xl font-semibold text-zinc-100">Configuration</h1>
-      <p className="text-sm text-zinc-500 mt-1 mb-8">Lưu trong DB — đổi là áp dụng ngay.</p>
-
-      {/* ===== Tabs ===== */}
-      <div className="flex items-center gap-8 border-b border-zinc-800/60 mb-8">
+    // cột giữa trang (mx-auto) — trang rộng mà neo trái sẽ lệch một bên
+    <div className="max-w-3xl mx-auto">
+      {/* ===== Tabs (không cần tiêu đề — nav đã ghi Config) ===== */}
+      <div className="flex items-center gap-8 border-b border-zinc-800/60 mb-10">
         <Tab id="connections" label="Connections" />
         <Tab id="mappings" label="Mappings" />
         <Tab id="processing" label="Processing" />
       </div>
 
-      {/* ===== Tab Connections: HQ intake + Xcenter output ===== */}
+      {/* ===== Tab Connections: MỘT cột dọc, section ngăn bằng hairline ===== */}
       {activeTab === 'connections' && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div>
           {/* --- HQ intake --- */}
-          <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6">
-            <h2 className="font-semibold text-zinc-100">HQ intake</h2>
-            <p className="text-sm text-zinc-500 mt-1 mb-6 font-mono">POST /api/v1/price-events</p>
+          <section className="pb-10">
+            <h2 className="font-mono text-xs uppercase tracking-[0.25em] text-zinc-500">HQ intake</h2>
+            <p className="text-sm text-zinc-600 mt-1.5 mb-7 font-mono">POST /api/v1/price-events</p>
 
             {/* IP allowlist dạng chips */}
             <div className="mb-5">
@@ -265,7 +245,7 @@ function ConfigPage() {
                   disabled={!exists(ipListKey)}
                   placeholder="add address…"
                   onChange={(e) => setIpInput(e.target.value)}
-                  className="font-mono text-sm bg-transparent border border-dashed border-zinc-700 rounded-lg px-3 py-1.5 text-zinc-200 placeholder:text-zinc-600 w-40 focus:outline-none focus:border-zinc-500 disabled:opacity-50"
+                  className="font-mono text-sm bg-zinc-900/60 border border-dashed border-zinc-600 rounded-lg px-3 py-1.5 text-zinc-100 placeholder:text-zinc-500 w-40 focus:outline-none focus:border-zinc-400 disabled:opacity-50"
                 />
                 <button
                   onClick={addIp}
@@ -277,21 +257,8 @@ function ConfigPage() {
               </div>
             </div>
 
-            {/* API key ref + HMAC ref */}
-            <div className="space-y-5">
-              {HQ_FIELDS.map((field) => (
-                <ConfigField
-                  key={field.configKey}
-                  field={field}
-                  value={draftOf(field.configKey)}
-                  exists={exists(field.configKey)}
-                  onChange={(newValue) => handleChange(field.configKey, newValue)}
-                />
-              ))}
-            </div>
-
-            {/* Rate limit + replay skew nằm cạnh nhau */}
-            <div className="grid grid-cols-2 gap-4 mt-5">
+            {/* Replay skew — ô hẹp */}
+            <div className="max-w-[220px] mt-5">
               {HQ_FIELDS_SMALL.map((field) => (
                 <ConfigField
                   key={field.configKey}
@@ -303,12 +270,12 @@ function ConfigPage() {
               ))}
             </div>
 
-          </div>
+          </section>
 
           {/* --- Xcenter output --- */}
-          <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 h-fit">
-            <h2 className="font-semibold text-zinc-100">Xcenter output</h2>
-            <p className="text-sm text-zinc-500 mt-1 mb-6 font-mono">MNT → Xcenter inbound</p>
+          <section className="border-t border-zinc-800/60 pt-10 pb-2">
+            <h2 className="font-mono text-xs uppercase tracking-[0.25em] text-zinc-500">Xcenter output</h2>
+            <p className="text-sm text-zinc-600 mt-1.5 mb-7 font-mono">MNT → Xcenter inbound</p>
 
             <div className="space-y-5">
               {XCENTER_FIELDS.map((field) => (
@@ -321,22 +288,19 @@ function ConfigPage() {
                 />
               ))}
             </div>
-
-          </div>
+          </section>
         </div>
       )}
 
-      {/* ===== Tab Mappings: chưa có ===== */}
-      {activeTab === 'mappings' && (
-        <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-10 text-center">
-          <p className="text-zinc-500">Chưa triển khai.</p>
-        </div>
-      )}
+      {/* ===== Tab Mappings: sổ đăng ký field (preview — mảnh 4 nối API) ===== */}
+      {activeTab === 'mappings' && <MappingsTab />}
 
       {/* ===== Tab Processing: config đang sống thật ===== */}
       {activeTab === 'processing' && (
-        <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 max-w-2xl">
-          <h2 className="font-semibold text-zinc-100 mb-6">Processing rules</h2>
+        <section className="pb-4">
+          <h2 className="font-mono text-xs uppercase tracking-[0.25em] text-zinc-500 mb-7">
+            Processing rules
+          </h2>
           <div className="space-y-5">
             {PROCESSING_FIELDS.map((field) => (
               <ConfigField
@@ -348,11 +312,11 @@ function ConfigPage() {
               />
             ))}
           </div>
-        </div>
+        </section>
       )}
 
-      {/* ===== Thanh lưu dưới cùng ===== */}
-      <div className="flex items-center justify-between bg-zinc-900 border border-zinc-800 rounded-xl px-6 py-4 mt-6">
+      {/* ===== Thanh lưu dưới cùng (flat, hairline) ===== */}
+      <div className="flex items-center justify-between border-t border-zinc-800/60 pt-5 mt-4">
         <span className="font-mono text-xs text-zinc-600">
           {Object.keys(values).length} config trong DB
         </span>
