@@ -15,7 +15,6 @@ import price_sync.domain.PriceRecord;
 @Component
 public class Validator {
 
-    // 4 luật FR-03 CỨNG (field cố định, code hiểu nghĩa) + validate ĐỘNG theo sổ (field khai thêm).
     public Optional<String> validate(PriceRecord record, List<MappingRule> rules) {
         try {
             ChangeType.valueOf(record.getChangeType().toUpperCase());
@@ -41,7 +40,6 @@ public class Validator {
             }
         }
 
-        // ==== Validate ĐỘNG: chỉ kiểm HÌNH DẠNG field khai thêm (không semantic được) ====
         Optional<String> dynamicReason = validateDynamic(record, rules);
         if (dynamicReason.isPresent()) {
             return dynamicReason;
@@ -56,10 +54,10 @@ public class Validator {
 
         for (MappingRule rule : rules) {
             if (!rule.getRecordType().equals(recordType)) {
-                continue; // luật của kiểu dòng khác → bỏ qua
+                continue; 
             }
             if (rule.getDataType() == null) {
-                continue; // field cố định (data_type null) → 4 luật cứng lo, không kiểm ở đây
+                continue; 
             }
             String field = rule.getJsonField();
             Object raw = record.getExtras() != null ? record.getExtras().get(field) : null;
@@ -68,7 +66,7 @@ public class Validator {
                 return Optional.of("MISSING_" + field.toUpperCase());
             }
             if (raw == null) {
-                continue; // không bắt buộc + vắng → cho qua
+                continue; 
             }
             String value = raw.toString();
             switch (rule.getDataType()) {
@@ -87,7 +85,7 @@ public class Validator {
                     }
                     break;
                 default:
-                    break; // STRING → không kiểm hình dạng
+                    break; 
             }
         }
         return Optional.empty();

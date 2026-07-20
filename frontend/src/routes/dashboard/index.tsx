@@ -110,52 +110,44 @@ function DashboardPage() {
     return () => clearInterval(timer)
   }, [])
 
-  // Tải metrics + batch mới nhất + nhật ký của nó — POLL mỗi 4s cho tự cập nhật (khỏi F5)
+  // Tải số liệu + tìm batch mới nhất + nhật ký của nó — LẶP LẠI mỗi 1 giây để dashboard tự cập nhật
   useEffect(() => {
-    let cancelled = false // tránh setState sau khi rời trang
+    // cờ để bỏ qua kết quả fetch trả về SAU khi đã rời trang (tránh set state trên component đã unmount)
+    let cancelled = false
 
-    function loadData() {
+    function load() {
+      // 1) số liệu đếm theo trạng thái
       fetch('/api/v1/events/metrics')
         .then((response) => response.json())
         .then((data: Record<string, number>) => {
-          if (!cancelled) {
-            setMetrics(data)
-          }
+          if (!cancelled) setMetrics(data)
         })
-        .catch(() => {}) // poll lỗi tạm thời → giữ số cũ
 
+      // 2) danh sách batch → lấy cái mới nhất → tải luôn nhật ký của nó
       fetch('/api/v1/events')
         .then((response) => response.json())
         .then((data: EventSummary[]) => {
-          if (cancelled) {
-            return
+          if (cancelled) return
+          if (data.length > 0) {
+            // batch mới nhất = id lớn nhất
+            const newestFirst = [...data].sort((a, b) => b.id - a.id)
+            const newest = newestFirst[0]
+            setLatest(newest)
+
+            // nhật ký của batch mới nhất (để lấy timestamp từng mốc trong stepper)
+            fetch('/api/v1/events/' + newest.id + '/logs')
+              .then((response) => response.json())
+              .then((logData: EventLog[]) => {
+                if (!cancelled) setLogs(logData)
+              })
           }
           setLoading(false)
-          if (data.length === 0) {
-            return
-          }
-          // batch mới nhất = id lớn nhất
-          const newest = [...data].sort((a, b) => b.id - a.id)[0]
-          setLatest(newest)
-          // nhật ký của nó → timestamp từng mốc + status nhảy live
-          fetch('/api/v1/events/' + newest.id + '/logs')
-            .then((response) => response.json())
-            .then((logsData: EventLog[]) => {
-              if (!cancelled) {
-                setLogs(logsData)
-              }
-            })
-            .catch(() => {})
-        })
-        .catch(() => {
-          if (!cancelled) {
-            setLoading(false)
-          }
         })
     }
 
-    loadData() // tải ngay
-    const timer = setInterval(loadData, 1000) // poll lại mỗi 1s
+    load() // chạy ngay khi mở trang
+    const timer = setInterval(load, 1000) // rồi lặp mỗi 1 giây
+    // cleanup: rời trang thì dừng hẹn giờ + đánh dấu đã huỷ
     return () => {
       cancelled = true
       clearInterval(timer)
@@ -163,7 +155,7 @@ function DashboardPage() {
   }, [])
 
   if (loading) {
-    return <p className="text-zinc-500 font-mono text-sm">Loading…</p>
+    return <p className="text-zinc-500 font-mono text-sm">Đang tải…</p>
   }
 
   // ===== Tính các bước của stepper từ nhật ký thật =====
@@ -246,7 +238,7 @@ function DashboardPage() {
   return (
     // Cột dọc phủ hết chiều cao còn lại của màn hình (100vh - nav 3.5rem - padding main 4rem),
     // justify-between giãn đều 3 khối: tracker / lưới số liệu / health
-    <div className="flex flex-col justify-between min-h-[calc(100vh-8rem)]">
+    <div className="flex flex-col justify-between min-h-[calc(100vh-7.5rem)]">
       {/* ===== Tracker batch mới nhất ===== */}
       {latest !== null && (
         <div className="border-y border-zinc-800/60 py-8">
@@ -254,7 +246,7 @@ function DashboardPage() {
           <div className="flex items-center justify-between mb-8 font-mono">
             <div className="flex items-baseline gap-4">
               <span className="text-xs uppercase tracking-[0.25em] text-zinc-500">
-                Latest batch
+                Batch mới nhất
               </span>
               <Link
                 to="/events/$id"
@@ -326,7 +318,7 @@ function DashboardPage() {
         {/* --- Thẻ Tổng quan: số tổng + thanh tỉ lệ + legend gộp một chỗ --- */}
         <div className="col-span-12 lg:col-span-4 bg-zinc-900 border border-zinc-800 rounded-xl p-6 flex flex-col">
           <div className="font-mono text-xs uppercase tracking-[0.25em] text-zinc-500">
-            Total batches
+            Tổng batch
           </div>
           <div className="text-5xl font-semibold text-zinc-100 mt-3">{total}</div>
 
@@ -356,15 +348,11 @@ function DashboardPage() {
               .filter((status) => metrics[status] > 0)
               .map((status) => {
                 const count = metrics[status]
-                const percent = Math.round((count / total) * 100)
                 return (
                   <div key={status} className="flex items-center gap-2.5 text-sm">
                     <span className={'w-2 h-2 rounded-full ' + BATCH_STATUS_STYLES[status].dot} />
                     <span className="text-zinc-400">{status}</span>
                     <span className="ml-auto text-zinc-100 font-medium">{count}</span>
-                    <span className="text-zinc-600 w-10 text-right font-mono text-xs">
-                      {percent}%
-                    </span>
                   </div>
                 )
               })}
@@ -376,7 +364,7 @@ function DashboardPage() {
           {/* Nhóm 1: KẾT QUẢ — 3 trạng thái chốt sổ, ô lớn nổi bật */}
           <div>
             <div className="font-mono text-xs uppercase tracking-[0.25em] text-zinc-500 mb-3">
-              Results
+              Kết quả
             </div>
             <div className="grid grid-cols-3 gap-4">
               {['WRITTEN', 'PARTIAL', 'FAILED'].map((status) => {
@@ -406,7 +394,7 @@ function DashboardPage() {
                       {count}
                     </div>
                     <div className="font-mono text-xs text-zinc-600 mt-1.5">
-                      {count === 0 ? '—' : percent + '% of total'}
+                      {count === 0 ? '—' : percent + '% tổng'}
                     </div>
                   </div>
                 )
@@ -417,7 +405,7 @@ function DashboardPage() {
           {/* Nhóm 2: ĐANG XỬ LÝ — 4 trạng thái trung gian, ô gọn */}
           <div>
             <div className="font-mono text-xs uppercase tracking-[0.25em] text-zinc-500 mb-3">
-              In progress
+              Đang xử lý
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
               {['RECEIVED', 'PROCESSING', 'WRITING', 'PENDING_WRITE'].map((status) => {
@@ -453,25 +441,25 @@ function DashboardPage() {
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-5">
             <span className="font-mono text-xs uppercase tracking-[0.25em] text-zinc-500">
-              System
+              Hệ thống
             </span>
             {/* dòng tổng kết: chỉ hiện khi CÓ SỰ CỐ (mọi thứ ổn thì im lặng) */}
             {checks.some((check) => check.state === 'fail') && (
               <span className="flex items-center gap-2 text-sm text-red-400">
                 <span className="w-1.5 h-1.5 rounded-full bg-red-400" />
-                Issue detected
+                Có sự cố
               </span>
             )}
           </div>
           <div className="flex items-center gap-4">
             {checkedAt !== '' && (
-              <span className="font-mono text-xs text-zinc-600">checked at {checkedAt}</span>
+              <span className="font-mono text-xs text-zinc-600">kiểm lúc {checkedAt}</span>
             )}
             <button
               onClick={runHealthChecks}
               className="font-mono text-xs uppercase tracking-[0.2em] text-zinc-400 hover:text-zinc-100 border border-zinc-800 hover:border-zinc-700 rounded-lg px-3 py-1.5 transition-colors"
             >
-              Recheck
+              Kiểm tra lại
             </button>
           </div>
         </div>
@@ -507,10 +495,10 @@ function DashboardPage() {
 
               <div className="font-mono text-xs">
                 {check.state === 'checking' ? (
-                  <span className="text-zinc-500">checking…</span>
+                  <span className="text-zinc-500">đang kiểm…</span>
                 ) : check.state === 'fail' ? (
                   <span className="text-red-400">
-                    {check.latencyMs === null ? 'UNREACHABLE' : 'ERROR · ' + check.latencyMs + ' ms'}
+                    {check.latencyMs === null ? 'KHÔNG KẾT NỐI ĐƯỢC' : 'LỖI · ' + check.latencyMs + ' ms'}
                   </span>
                 ) : (
                   <>

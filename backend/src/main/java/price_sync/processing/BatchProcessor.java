@@ -90,7 +90,7 @@ public class BatchProcessor {
         PriceBatch batch = priceBatchRepository.findById(batchId).get();
 
         List<PriceRecord> records = priceRecordRepository.findByBatchId(batchId);
-        List<MappingRule> rules = mappingRuleRepository.findAll(); // sổ để validate động field khai thêm
+        List<MappingRule> rules = mappingRuleRepository.findAll(); 
         for (PriceRecord record : records) {
             Optional<String> reason = validator.validate(record, rules);
             if (reason.isEmpty()) {
@@ -149,8 +149,7 @@ public class BatchProcessor {
         Path finalFile = outputWriter.write(tempFile, batch);
         Files.deleteIfExists(tempFile); 
         log.info("Da ghi file MNT: {}", finalFile);
-        // PARTIAL nếu batch có BẤT KỲ record SET_ASIDE nào — cả lúc validate lẫn lúc map.
-        // (supersede KHÔNG tính: status là SUPERSEDED chứ không phải SET_ASIDE)
+
         boolean anySetAside = hasSetAside
                 || priceRecordRepository.existsByBatchIdAndValidationStatus(batchId, RecordStatus.SET_ASIDE);
         if (anySetAside) {

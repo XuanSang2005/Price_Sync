@@ -33,21 +33,19 @@ public class MappingRule {
     private String ruleValue;
 
     @Column(name = "data_type")
-    private String dataType; // STRING | NUMBER | DATE (null = không kiểm — field cố định)
+    private String dataType; 
 
     @Column(nullable = false)
-    private boolean required; // true → thiếu thì set aside
+    private boolean required; 
 
     protected MappingRule() {
     }
 
-    // Constructor gọn (test Mapper tự dựng luật — không quan tâm validate động).
     public MappingRule(String recordType, int position, String jsonField, String mntColumn, String ruleType,
             String ruleValue) {
         this(recordType, position, jsonField, mntColumn, ruleType, ruleValue, null, false);
     }
 
-    // Constructor đầy đủ (API CRUD tạo luật kèm data_type/required).
     public MappingRule(String recordType, int position, String jsonField, String mntColumn, String ruleType,
             String ruleValue, String dataType, boolean required) {
         this.recordType = recordType;
