@@ -110,32 +110,57 @@ function DashboardPage() {
     return () => clearInterval(timer)
   }, [])
 
-  // Tải số liệu + tìm batch mới nhất
+  // Tải metrics + batch mới nhất + nhật ký của nó — POLL mỗi 4s cho tự cập nhật (khỏi F5)
   useEffect(() => {
-    fetch('/api/v1/events/metrics')
-      .then((response) => response.json())
-      .then((data: Record<string, number>) => setMetrics(data))
+    let cancelled = false // tránh setState sau khi rời trang
 
-    fetch('/api/v1/events')
-      .then((response) => response.json())
-      .then((data: EventSummary[]) => {
-        if (data.length > 0) {
-          // batch mới nhất = id lớn nhất
-          const newestFirst = [...data].sort((a, b) => b.id - a.id)
-          setLatest(newestFirst[0])
-        }
-        setLoading(false)
-      })
-  }, [])
-
-  // Có batch mới nhất rồi → tải nhật ký của nó (để lấy timestamp từng mốc)
-  useEffect(() => {
-    if (latest !== null) {
-      fetch('/api/v1/events/' + latest.id + '/logs')
+    function loadData() {
+      fetch('/api/v1/events/metrics')
         .then((response) => response.json())
-        .then((data: EventLog[]) => setLogs(data))
+        .then((data: Record<string, number>) => {
+          if (!cancelled) {
+            setMetrics(data)
+          }
+        })
+        .catch(() => {}) // poll lỗi tạm thời → giữ số cũ
+
+      fetch('/api/v1/events')
+        .then((response) => response.json())
+        .then((data: EventSummary[]) => {
+          if (cancelled) {
+            return
+          }
+          setLoading(false)
+          if (data.length === 0) {
+            return
+          }
+          // batch mới nhất = id lớn nhất
+          const newest = [...data].sort((a, b) => b.id - a.id)[0]
+          setLatest(newest)
+          // nhật ký của nó → timestamp từng mốc + status nhảy live
+          fetch('/api/v1/events/' + newest.id + '/logs')
+            .then((response) => response.json())
+            .then((logsData: EventLog[]) => {
+              if (!cancelled) {
+                setLogs(logsData)
+              }
+            })
+            .catch(() => {})
+        })
+        .catch(() => {
+          if (!cancelled) {
+            setLoading(false)
+          }
+        })
     }
-  }, [latest])
+
+    loadData() // tải ngay
+    const timer = setInterval(loadData, 1000) // poll lại mỗi 1s
+    return () => {
+      cancelled = true
+      clearInterval(timer)
+    }
+  }, [])
 
   if (loading) {
     return <p className="text-zinc-500 font-mono text-sm">Loading…</p>

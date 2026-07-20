@@ -35,10 +35,11 @@ public class BatchProcessorTest {
     private final OutputWriter writer = mock(OutputWriter.class);
     private final ConfigRepository configRepository = mock(ConfigRepository.class);
     private final MappingRuleRepository mappingRuleRepository = mock(MappingRuleRepository.class);
+    private final AlertService alertService = mock(AlertService.class);
 
     private final BatchProcessor processor = new BatchProcessor(priceRecordRepository, new Validator(),
             priceBatchRepository, new Mapper(), builder, writer, batchLogRepository, configRepository,
-            mappingRuleRepository);
+            mappingRuleRepository, alertService);
 
     // Bộ luật chuẩn (FDETL 7 cột + FDELE 3 cột) — Mapper thật cần để dựng cột.
     private static final String LOC_MAP = "{\"STORE\":\"S\",\"ZONE\":\"Z\"}";

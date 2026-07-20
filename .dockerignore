@@ -1,0 +1,8 @@
+# Không gửi những thứ này vào Docker build context (nhẹ + tránh lẫn bản build cũ)
+**/node_modules
+**/target
+**/dist
+# static build sẵn ở máy local — trong Docker sẽ build lại từ đầu ở tầng 1
+backend/src/main/resources/static
+.git
+xcenter-inbound

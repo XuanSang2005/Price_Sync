@@ -1,0 +1,252 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8" />
+<title>Price Sync — Kế hoạch Demo</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
+    color: #1a1a1a; line-height: 1.5; max-width: 940px; margin: 0 auto;
+    padding: 36px; font-size: 13px;
+  }
+  h1 { font-size: 26px; margin: 0 0 2px; letter-spacing: -0.5px; }
+  h2 {
+    font-size: 17px; margin: 30px 0 10px; padding-bottom: 6px;
+    border-bottom: 2px solid #111;
+  }
+  h3 { font-size: 14px; margin: 16px 0 6px; }
+  .sub { color: #666; margin: 0 0 4px; }
+  .meta { color: #888; font-size: 12px; margin: 0 0 8px; }
+  table { width: 100%; border-collapse: collapse; margin: 10px 0 4px; font-size: 12px; }
+  th, td { border: 1px solid #cfcfcf; padding: 7px 9px; text-align: left; vertical-align: top; }
+  th { background: #eef0f2; font-weight: 600; }
+  tr:nth-child(even) td { background: #fafbfc; }
+  td.n { text-align: center; font-weight: 700; color: #0a7; width: 30px; }
+  code, .mono {
+    font-family: 'SF Mono', Menlo, Consolas, monospace; font-size: 11px;
+    background: #f1f2f4; padding: 1px 4px; border-radius: 3px;
+  }
+  pre {
+    background: #f6f7f9; border: 1px solid #e2e4e8; border-radius: 6px;
+    padding: 10px 12px; font-family: 'SF Mono', Menlo, monospace; font-size: 11px;
+    overflow-x: auto; margin: 8px 0;
+  }
+  .tag {
+    display: inline-block; font-size: 10px; background: #e8eefb; color: #274690;
+    padding: 1px 6px; border-radius: 3px; white-space: nowrap;
+  }
+  ul { margin: 6px 0; padding-left: 20px; }
+  li { margin: 2px 0; }
+  .note {
+    background: #fff8e6; border-left: 3px solid #efb100; padding: 8px 12px;
+    margin: 10px 0; font-size: 12px; border-radius: 0 4px 4px 0;
+  }
+  .ok { color: #0a7; font-weight: 600; }
+  .warn { color: #c0392b; font-weight: 600; }
+  .lead { font-size: 13.5px; color: #333; }
+  @media print {
+    body { padding: 0; max-width: none; font-size: 11.5px; }
+    h1 { font-size: 23px; }
+    h2 { page-break-after: avoid; }
+    tr, .note, pre, h3 { page-break-inside: avoid; }
+    th, td.n, .tag, .note { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  }
+  @page { margin: 1.4cm; }
+</style>
+</head>
+<body>
+
+<h1>Price Sync — Kế hoạch Demo</h1>
+<p class="sub">Middleware đồng bộ giá HQ → POS (Oracle Retail Xstore). Mỗi đêm HQ POST một batch giá; hệ thống xác thực, kiểm định, ánh xạ, dựng file MNT rồi ghi vào thư mục Xcenter inbound.</p>
+<p class="meta">Bản demo · môi trường: local (<code>:5173</code> UI + <code>:8080</code> API) hoặc Docker (<code>docker compose up</code>).</p>
+
+<h2>1. Chuẩn bị (trước khi diễn)</h2>
+<table>
+  <tr><th style="width:26%">Việc</th><th>Lệnh / Thao tác</th></tr>
+  <tr>
+    <td>Chạy backend (local)</td>
+    <td><code>cd backend &amp;&amp; HQ_API_KEY=hq-secret-key-123 HQ_HMAC_SECRET=shared-secret-abc ./mvnw spring-boot:run</code></td>
+  </tr>
+  <tr>
+    <td>Chạy UI (local)</td>
+    <td><code>cd frontend &amp;&amp; npm run dev</code> → mở <code>http://localhost:5173</code></td>
+  </tr>
+  <tr>
+    <td>Hoặc cả gói (Docker)</td>
+    <td><code>docker compose up -d --build</code> → mở <code>http://localhost:8080</code> (nhớ <code>ip_allowlist</code> có <code>192.168.65.1</code>)</td>
+  </tr>
+  <tr>
+    <td>Gửi request</td>
+    <td>Postman collection ở <code>postman/</code> (tự ký HMAC + timestamp trong pre-request)</td>
+  </tr>
+  <tr>
+    <td>Xem DB</td>
+    <td>Local: <code>psql price_sync</code> · Docker: <code>docker compose exec db psql -U price_sync -d price_sync</code></td>
+  </tr>
+  <tr>
+    <td>Xem file kết quả</td>
+    <td><code>ls -t backend/xcenter-inbound/</code> (hoặc <code>./xcenter-inbound/</code> khi chạy Docker)</td>
+  </tr>
+  <tr>
+    <td>Xem email alert</td>
+    <td>Hộp thư web Mailpit: <code>http://localhost:8025</code> (chạy Docker) — email hiện khi batch FAILED</td>
+  </tr>
+</table>
+
+<h2>2. Kịch bản demo (chạy theo thứ tự)</h2>
+<table>
+  <tr>
+    <th class="n">#</th>
+    <th style="width:30%">Thao tác</th>
+    <th style="width:26%">Chứng minh tính năng</th>
+    <th>Kỳ vọng thấy</th>
+  </tr>
+
+  <tr>
+    <td class="n">1</td>
+    <td><b>Khởi động một lệnh.</b> Chạy hệ thống (Docker <code>up</code> hoặc 2 terminal local). Mở Dashboard + Events.</td>
+    <td>Đóng gói &amp; triển khai · console vận hành</td>
+    <td>Cả UI + API + Postgres lên. Dashboard/Events sạch (chưa có batch).</td>
+  </tr>
+
+  <tr>
+    <td class="n">2</td>
+    <td><b>Happy path.</b> POST 1 batch hợp lệ (Postman “202 - batch hợp lệ”). Đứng ở <b>Dashboard</b> xem.</td>
+    <td>Intake (202) · pipeline async · ánh xạ MNT · console tự cập nhật (poll 1s)</td>
+    <td>Tracker nhảy <code>RECEIVED → PROCESSING → WRITTEN</code> trong vài giây; Events + metrics tự đổi (không F5).</td>
+  </tr>
+
+  <tr>
+    <td class="n">3</td>
+    <td><b>Xem sản phẩm ra lò.</b> <code>ls xcenter-inbound/</code> rồi mở file <code>.mnt</code> mới nhất.</td>
+    <td>Dựng file DataLoader MNT (FHEAD/FDETL/FDELE/FTAIL)</td>
+    <td>File có <code>FHEAD,&lt;date&gt;</code> · dòng <code>FDETL,...</code> (STORE→S, giá, tiền tệ, ngày) · <code>FTAIL,&lt;count&gt;</code>.</td>
+  </tr>
+
+  <tr>
+    <td class="n">4</td>
+    <td><b>Bảo mật 4 lớp.</b> Chạy các case Postman: sai API key · thiếu X-Timestamp · chữ ký rác · IP lạ.</td>
+    <td>IP allowlist (403) · timestamp/replay (401) · HMAC-SHA256 (401) · API key (401)</td>
+    <td>Mỗi case bị chặn đúng mã lỗi. Case “replay 10 phút” cũng 401 (chống phát lại).</td>
+  </tr>
+
+  <tr>
+    <td class="n">5</td>
+    <td><b>Kiểm định &amp; PARTIAL.</b> POST batch trộn record hỏng (giá âm / currency sai). Mở trang <b>chi tiết batch</b>.</td>
+    <td>4 luật FR-03 · set-aside kèm lý do · PARTIAL / abort &gt;20%</td>
+    <td>Record hỏng = <code>SET_ASIDE</code> + lý do; phần còn lại vẫn ra file → batch <code>PARTIAL</code>. Nếu vượt ngưỡng (vd batch 1 record giá âm) → <code>FAILED</code> + <b>email alert bay vào Mailpit</b> (<code>:8025</code>).</td>
+  </tr>
+
+  <tr>
+    <td class="n">6</td>
+    <td><b>Chống trùng.</b> Gửi lại đúng batch vừa rồi (case “409 - batch trùng”). Rồi gửi bản version cao hơn.</td>
+    <td>Idempotency 2 mức · supersede (bản mới thắng)</td>
+    <td>Gửi trùng → <code>409</code> no-op; version cao hơn → bản cũ <code>SUPERSEDED</code>, chỉ bản mới ra file.</td>
+  </tr>
+
+  <tr>
+    <td class="n">7</td>
+    <td><b>★ ĐINH — Dynamic mapping.</b> Tab <b>Mappings</b> → “Thêm luật”: <code>promo_code</code>, position 8, DIRECT. POST batch có <code>"promo_code":"TET2027"</code>.</td>
+    <td>Thêm field mới KHÔNG sửa code, KHÔNG redeploy</td>
+    <td>File MNT <b>mọc thêm cột</b> <code>...,TET2027</code>. Xoá luật → file về cũ. UI có ô “Xem trước” dòng output dựng từ luật.</td>
+  </tr>
+
+  <tr>
+    <td class="n">8</td>
+    <td><b>Validate động.</b> Khai field kiểu <code>NUMBER</code> (vd <code>promo_pct</code>). POST giá trị <code>"abc"</code>.</td>
+    <td>Kiểm hình dạng field khai thêm (STRING/NUMBER/DATE + required)</td>
+    <td>Record đó <code>SET_ASIDE</code> lý do <code>INVALID_PROMO_PCT</code>; các record số hợp lệ vẫn qua.</td>
+  </tr>
+
+  <tr>
+    <td class="n">9</td>
+    <td><b>Config-in-DB (không redeploy).</b> Tab <b>Config</b>: đổi <code>abort_threshold</code> hoặc <code>filename_pattern</code> → Save. POST lại.</td>
+    <td>Cấu hình sống trong DB, sửa qua console, hiệu lực tức thì</td>
+    <td>Hành vi đổi ngay không restart: ngưỡng huỷ khác đi / tên file sinh ra theo pattern mới. UI cảnh báo nếu pattern thiếu <code>.mnt</code>.</td>
+  </tr>
+
+  <tr>
+    <td class="n">10</td>
+    <td><b>Retry — tự chữa lỗi ghi.</b> Chặn ghi: <code>chmod a-w backend/xcenter-inbound</code> → POST 1 batch. Sau đó mở lại: <code>chmod u+w backend/xcenter-inbound</code>.</td>
+    <td>Ghi lỗi → PENDING_WRITE → retry backoff (6 lần, 30s→cap 10 phút) → WRITTEN/FAILED · operator re-drive</td>
+    <td>Batch park <code>PENDING_WRITE</code> (<code>retry_count</code> + <code>next_retry_at</code> theo backoff); mở quyền lại → tick 15s tự retry → <code>WRITTEN</code>. Cạn 6 lần → <code>FAILED</code> → re-drive <code>POST /api/v1/events/{id}/retry</code> → 202 → chạy lại.</td>
+  </tr>
+
+  <tr>
+    <td class="n">11</td>
+    <td><b>Reaper — cứu instance chết giữa chừng.</b> Giả lập owner claim rồi chết 10 phút trước (psql):<br><code>UPDATE price_batch SET status='PROCESSING', owner_instance='dead-1', claimed_at=now()-interval '10 minutes' WHERE id=&lt;id&gt;;</code><br>Chờ ≤60s (reaper <code>@Scheduled</code>).</td>
+    <td>Reaper thu hồi lease hết hạn (&gt;5 phút) → active/active không kẹt batch khi 1 con chết</td>
+    <td>Trong ≤60s reaper reset batch về <code>RECEIVED</code> (mất owner) → dispatcher <b>claim lại với owner MỚI</b> → chạy tiếp tới <code>WRITTEN</code>. Theo dõi: <code>SELECT status, owner_instance, claimed_at FROM price_batch WHERE id=&lt;id&gt;;</code> hoặc log app.</td>
+  </tr>
+
+  <tr>
+    <td class="n">12</td>
+    <td><b>Nhật ký vòng đời.</b> Trên trang chi tiết batch, xem mục <b>“Processing history”</b>.</td>
+    <td>Audit log (bảng batch_log), timeline có mốc thời gian</td>
+    <td>Chuỗi <code>RECEIVED → PROCESSING → WRITTEN</code> với timestamp từng mốc.</td>
+  </tr>
+
+  <tr>
+    <td class="n">13</td>
+    <td><b>Sức khoẻ &amp; mở rộng.</b> Chỉ vào health strip ở Dashboard; nói về thiết kế 2 instance.</td>
+    <td>Observability (health) · active/active an toàn (FOR UPDATE SKIP LOCKED + reaper)</td>
+    <td>Đèn xanh API/DB + độ trễ. Giải thích: 2 instance chung 1 DB không xử lý trùng, một con chết con kia gánh.</td>
+  </tr>
+</table>
+
+<div class="note">
+  <b>Câu chốt khi demo:</b> “Cùng một hệ thống chạy trong container — HQ bắn batch vào, đi qua 4 lớp bảo mật, được kiểm định &amp; ánh xạ, rồi <b>file MNT ra thư mục</b> — tất cả tự động, không cần máy dev. Và muốn thêm một cột dữ liệu mới thì <b>chỉ khai trên console</b>, không đụng code, không deploy lại.”
+</div>
+
+<h2>3. Ma trận phủ tính năng</h2>
+<table>
+  <tr><th style="width:34%">Tính năng</th><th style="width:14%">Bước demo</th><th>Ghi chú</th></tr>
+  <tr><td>Intake API + trả 202</td><td>2</td><td><code>POST /api/v1/price-events</code></td></tr>
+  <tr><td>Bảo mật: IP / timestamp / HMAC / API key</td><td>4</td><td>403 / 401 tương ứng · chống replay</td></tr>
+  <tr><td>Pipeline async (DB-queue, claim)</td><td>2</td><td>WorkDispatcher + <code>FOR UPDATE SKIP LOCKED</code></td></tr>
+  <tr><td>Vòng đời batch (RECEIVED→…→WRITTEN/PARTIAL)</td><td>2, 5, 11</td><td>Tracker Dashboard + audit log</td></tr>
+  <tr><td>Kiểm định FR-03 + set-aside + abort</td><td>5</td><td>giá / currency / change_type / khoảng ngày</td></tr>
+  <tr><td>Ánh xạ → file MNT (FHEAD/FDETL/FDELE/FTAIL)</td><td>3</td><td>STORE→S, ZONE→Z, scale giá, default VND</td></tr>
+  <tr><td>Idempotency + supersede</td><td>6</td><td>uq_batch (409) · uq_change (bản mới thắng)</td></tr>
+  <tr><td><b>Dynamic mapping (thêm field không sửa code)</b></td><td>7</td><td>bảng <code>mapping_rule</code> + van lọc intake</td></tr>
+  <tr><td>Validate động (data_type / required)</td><td>8</td><td>chỉ kiểm hình dạng field khai thêm</td></tr>
+  <tr><td>Config-in-DB (sửa không redeploy)</td><td>9</td><td>abort_threshold · ip_allowlist · filename_pattern…</td></tr>
+  <tr><td>Retry backoff + re-drive (lỗi ghi)</td><td>10</td><td>PENDING_WRITE → WRITTEN / FAILED</td></tr>
+  <tr><td>Reaper — thu hồi batch của owner chết</td><td>11</td><td>lease PROCESSING hết hạn &gt;5 phút → re-claim</td></tr>
+  <tr><td>Alert email cho ops khi FAILED</td><td>5, 10</td><td>gửi SMTP (Mailpit) · best-effort · cả 2 nhánh FAILED</td></tr>
+  <tr><td>Console React (Events/Dashboard/Config/Detail)</td><td>1–13</td><td>poll live, dark theme, security gate, 3D blocks</td></tr>
+  <tr><td>Triển khai một lệnh (Docker + Postgres)</td><td>1</td><td>bundle SPA vào jar · compose</td></tr>
+  <tr><td>Observability + 2-instance HA</td><td>13</td><td>health strip · thiết kế active/active</td></tr>
+</table>
+
+<h2>4. Phụ lục</h2>
+
+<h3>Cheat-sheet psql</h3>
+<pre>psql price_sync                       -- nối DB local
+\dt                                   -- liệt kê bảng
+\d price_batch                        -- cấu trúc 1 bảng
+SELECT id, batch_id, status, generated_at FROM price_batch ORDER BY id DESC LIMIT 10;
+SELECT change_id, validation_status, set_aside_reason, extras
+  FROM price_record WHERE batch_id = &lt;id&gt;;
+SELECT record_type, position, json_field, rule_type, rule_value
+  FROM mapping_rule ORDER BY record_type, position;
+SELECT config_key, config_value FROM config;
+\q</pre>
+
+<h3>Gỡ rối nhanh</h3>
+<ul>
+  <li><span class="warn">Startup chết “Could not resolve placeholder 'HQ_API_KEY'”</span> → thiếu env var; chạy kèm <code>HQ_API_KEY=… HQ_HMAC_SECRET=… ./mvnw spring-boot:run</code> (fail-fast đúng thiết kế).</li>
+  <li><span class="warn">POST bị 403</span> → IP không trong allowlist. Docker thấy IP <code>192.168.65.1</code> → thêm vào <code>ip_allowlist</code> qua <code>PUT /api/v1/config/ip_allowlist</code> hoặc UI Config.</li>
+  <li><span class="warn">POST bị 401</span> → sai chữ ký/timestamp/API key → dùng Postman collection (tự ký).</li>
+  <li><span class="warn">UI không tự cập nhật</span> → đang xem bản build cũ ở <code>:8080</code>; dùng <code>:5173</code> (dev) hoặc rebuild.</li>
+</ul>
+
+<h3>Chưa có (nói thật nếu bị hỏi)</h3>
+<ul>
+  <li>Đang chạy <b>1 instance</b>; 2-instance active/active chưa dựng (cơ chế an toàn thì đã có).</li>
+  <li>Chưa có <b>test tầng web</b> tự động &amp; <b>Actuator/Micrometer</b>; một vài nợ nhỏ backend (guard filename phía server, uq_change→409, secret ra <code>.env</code> cho prod).</li>
+</ul>
+
+</body>
+</html>

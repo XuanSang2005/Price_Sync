@@ -4,6 +4,8 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.lang.NonNull;
 import org.springframework.web.filter.OncePerRequestFilter;
 
@@ -14,7 +16,7 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 
 public class IpAllowListFilter extends OncePerRequestFilter {
-    List<String> ipAllowList = new ArrayList<>();
+    private static final Logger log = LoggerFactory.getLogger(IpAllowListFilter.class);
     private final ConfigRepository configRepository; // chìa khóa tủ sổ
 
     public IpAllowListFilter(ConfigRepository configRepository) {
@@ -36,6 +38,7 @@ public class IpAllowListFilter extends OncePerRequestFilter {
         if (ipAllowList.contains(clientIp)) {
             filterChain.doFilter(request, response);
         } else {
+            log.warn("IP bi chan 403: [{}] — allowlist hien tai: {}", clientIp, ipAllowList);
             response.setStatus(403);
         }
 

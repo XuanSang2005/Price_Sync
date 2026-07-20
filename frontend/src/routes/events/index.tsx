@@ -44,23 +44,43 @@ function EventsPage() {
   const [filter, setFilter] = useState('ALL') // tab đang chọn ('ALL' hoặc tên status)
 
   useEffect(() => {
-    fetch('/api/v1/events')
-      .then((response) => {
-        if (!response.ok) {
-          throw new Error('API returned error ' + response.status)
-        }
-        return response.json()
-      })
-      .then((data: EventSummary[]) => {
-        // Sắp id giảm dần → batch mới nhất lên đầu bảng
-        const newestFirst = [...data].sort((a, b) => b.id - a.id)
-        setEvents(newestFirst)
-        setLoading(false)
-      })
-      .catch((err: Error) => {
-        setError(err.message)
-        setLoading(false)
-      })
+    let cancelled = false // tránh setState sau khi rời trang
+
+    function load(isFirst: boolean) {
+      fetch('/api/v1/events')
+        .then((response) => {
+          if (!response.ok) {
+            throw new Error('API returned error ' + response.status)
+          }
+          return response.json()
+        })
+        .then((data: EventSummary[]) => {
+          if (cancelled) {
+            return
+          }
+          // Sắp id giảm dần → batch mới nhất lên đầu bảng
+          const newestFirst = [...data].sort((a, b) => b.id - a.id)
+          setEvents(newestFirst)
+          setLoading(false)
+        })
+        .catch((err: Error) => {
+          if (cancelled) {
+            return
+          }
+          // Chỉ lần tải ĐẦU mới hiện màn lỗi; poll lỗi tạm thời → giữ data cũ, không nhảy màn lỗi
+          if (isFirst) {
+            setError(err.message)
+            setLoading(false)
+          }
+        })
+    }
+
+    load(true) // tải ngay
+    const timer = setInterval(() => load(false), 4000) // poll lại mỗi 4s → console tự cập nhật
+    return () => {
+      cancelled = true
+      clearInterval(timer)
+    }
   }, [])
 
   if (loading) {

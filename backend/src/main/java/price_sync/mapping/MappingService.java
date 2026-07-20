@@ -17,7 +17,6 @@ public class MappingService {
         this.mappingRuleRepository = mappingRuleRepository;
     }
 
-    // Danh sách luật, sắp theo record_type rồi position (thứ tự cột ổn định cho UI).
     @Transactional
     public List<MappingResponse> getAll() {
         return mappingRuleRepository.findAll().stream()
@@ -27,14 +26,12 @@ public class MappingService {
                 .toList();
     }
 
-    // Khai một luật mới (thêm một cột / một field vào sổ).
     @Transactional
     public void create(MappingCreateRequest req) {
         mappingRuleRepository.save(new MappingRule(req.recordType(), req.position(), req.jsonField(),
                 req.mntColumn(), req.ruleType(), req.ruleValue(), req.dataType(), req.required()));
     }
 
-    // Gỡ một luật (idempotent — id không tồn tại thì bỏ qua).
     @Transactional
     public void delete(Long id) {
         mappingRuleRepository.deleteById(id);

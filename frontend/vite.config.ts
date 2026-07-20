@@ -14,4 +14,10 @@ export default defineConfig({
   server: {
     proxy: { '/api': 'http://localhost:8080' },
   },
+  // Prod: build thẳng vào static/ của Spring → jar phục vụ cả UI lẫn API cùng một cổng.
+  // Dev vẫn dùng `npm run dev` + proxy ở trên (không đụng khối build này).
+  build: {
+    outDir: '../backend/src/main/resources/static',
+    emptyOutDir: true,
+  },
 })

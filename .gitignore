@@ -35,3 +35,6 @@ build/
 ### Local project notes (kept out of git) ###
 CLAUDE.md
 xcenter-inbound/
+
+### Local run script (CHỨA app password Gmail — không commit) ###
+run.sh

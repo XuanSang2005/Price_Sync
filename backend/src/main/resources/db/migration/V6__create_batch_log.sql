@@ -1,5 +1,4 @@
-CREATE TABLE batch_
-log (
+CREATE TABLE batch_log (
     id BIGSERIAL PRIMARY KEY,
     batch_id BIGINT NOT NULL REFERENCES price_batch(id),
     status VARCHAR NOT NULL,

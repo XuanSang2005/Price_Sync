@@ -41,11 +41,12 @@ public class BatchProcessor {
     private final BatchLogRepository batchLogRepository;
     private final ConfigRepository configRepository;
     private final MappingRuleRepository mappingRuleRepository;
+    private final AlertService alertService;
 
     public BatchProcessor(PriceRecordRepository priceRecordRepository, Validator validator,
             PriceBatchRepository priceBatchRepository, Mapper mapper, PayloadBuilder payloadBuilder,
             OutputWriter outputWriter, BatchLogRepository batchLogRepository, ConfigRepository configRepository,
-            MappingRuleRepository mappingRuleRepository) {
+            MappingRuleRepository mappingRuleRepository, AlertService alertService) {
         this.priceRecordRepository = priceRecordRepository;
         this.validator = validator;
         this.priceBatchRepository = priceBatchRepository;
@@ -55,6 +56,7 @@ public class BatchProcessor {
         this.batchLogRepository = batchLogRepository;
         this.configRepository = configRepository;
         this.mappingRuleRepository = mappingRuleRepository;
+        this.alertService = alertService;
     }
 
     @Transactional
@@ -107,6 +109,7 @@ public class BatchProcessor {
             log.warn("Batch {} BI HUY: {}/{} records set aside (ti le hong {}%)",
                     batchId, setAside, records.size(), Math.round(failRate * 100));
             recordLog(batch.getId(), batch.getStatus(), setAside + "/" + records.size() + " set aside");
+            alertService.batchFailed(batch, "abort: " + setAside + "/" + records.size() + " record bi set aside (vuot nguong)");
             return false;
         } else {
             log.info("Batch {} qua kiem dinh: {} VALID, {} SET_ASIDE - san sang cho Mapper",
@@ -166,6 +169,7 @@ public class BatchProcessor {
         if (batch.getStatus() == BatchStatus.FAILED) {
             log.error("CHUONG: Batch {} FAILED sau {} lan ghi that bai - can nguoi xu ly", bachtId,
                     batch.getRetryCount());
+            alertService.batchFailed(batch, "can " + batch.getRetryCount() + " lan retry ghi file");
         }
     }
 

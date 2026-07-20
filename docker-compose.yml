@@ -1,0 +1,49 @@
+# Dựng cả hệ thống bằng 1 lệnh: `docker compose up --build`
+#   db  = Postgres (kho)
+#   app = jar Spring (đã kèm UI) — nối vào db qua mạng nội bộ của compose
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: price_sync
+      POSTGRES_USER: price_sync
+      POSTGRES_PASSWORD: price_sync
+    volumes:
+      - pgdata:/var/lib/postgresql/data # dữ liệu DB sống qua các lần tắt/mở
+    healthcheck: # app chờ tới khi Postgres THỰC SỰ sẵn sàng mới khởi động
+      test: ['CMD-SHELL', 'pg_isready -U price_sync -d price_sync']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  app:
+    build: . # build từ Dockerfile ở thư mục này
+    depends_on:
+      db:
+        condition: service_healthy
+      mailpit:
+        condition: service_started
+    environment:
+      # override datasource trỏ sang service "db" (không phải localhost)
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/price_sync
+      SPRING_DATASOURCE_USERNAME: price_sync
+      SPRING_DATASOURCE_PASSWORD: price_sync
+      # secret HQ (giống lệnh chạy local) — ADR-11: secret chỉ ở env var
+      HQ_API_KEY: hq-secret-key-123
+      HQ_HMAC_SECRET: shared-secret-abc
+      # gửi alert email qua Mailpit (SMTP nội bộ trong mạng compose)
+      MAIL_HOST: mailpit
+      MAIL_PORT: 1025
+    ports:
+      - '8080:8080' # mở cổng 8080 ra host → mở http://localhost:8080
+    volumes:
+      - ./xcenter-inbound:/app/xcenter-inbound # file MNT ghi ra host xem được
+
+  # Mailpit — SMTP giả + hộp thư WEB để xem email alert khi demo. Prod thay bằng mail server thật.
+  mailpit:
+    image: axllent/mailpit:latest
+    ports:
+      - '8025:8025' # hộp thư web: http://localhost:8025 (SMTP 1025 chỉ dùng nội bộ)
+
+volumes:
+  pgdata:
