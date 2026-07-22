@@ -1,4 +1,4 @@
-package price_sync.intake.error;
+package price_sync.error;
 
 import java.time.OffsetDateTime;
 

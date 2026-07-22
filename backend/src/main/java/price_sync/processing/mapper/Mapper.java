@@ -10,6 +10,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 import org.springframework.stereotype.Component;
 
@@ -28,6 +29,11 @@ import price_sync.domain.record.PriceRecord;
 @Component
 public class Mapper {
     private final ObjectMapper objectMapper = new ObjectMapper();
+
+    // Field NỘI BỘ / metadata: KHÔNG được lộ ra làm nguồn map (tránh rò trạng thái persistence vào file MNT).
+    // Dùng CHUNG với MappingService.meta() để danh sách nguồn khớp đúng field mà buildFields phân giải được.
+    public static final Set<String> INTERNAL_FIELDS =
+            Set.of("id", "batch_id", "validation_status", "set_aside_reason", "extras");
 
     public Optional<MntRow> map(PriceRecord record, LocalDate businessDate, List<MappingRule> rules) {
         ChangeType changeType = ChangeType.valueOf(record.getChangeType().toUpperCase());
@@ -57,7 +63,7 @@ public class Mapper {
     // DYNAMIC bằng REFLECTION: thay vì liệt kê tay từng getter, ta duyệt MỌI getter của entity
     // rồi đổi tên getter → snake_case (getItemId → item_id) và tự đọc giá trị. Nhờ vậy THÊM một cột
     // cố định vào PriceRecord là map được NGAY qua mapping_rule, không phải sửa Mapper.
-    private Map<String, String> buildFields(PriceRecord record, LocalDate businessDate) {
+    public Map<String, String> buildFields(PriceRecord record, LocalDate businessDate) {
         Map<String, String> fields = new HashMap<>();
 
         for (Method getter : PriceRecord.class.getMethods()) {
@@ -65,14 +71,18 @@ public class Mapper {
                 continue; // getter thật không có tham số
             }
             String name = getter.getName();
-            if (!name.startsWith("get") || name.equals("getClass") || name.equals("getExtras")) {
-                continue; // bỏ getClass (nhiễu) và extras (xử lý riêng bên dưới, kiểu Map)
+            if (!name.startsWith("get") || name.equals("getClass")) {
+                continue; // getClass gây nhiễu
             }
             if (getter.getReturnType() == void.class) {
                 continue;
             }
+            String field = toSnakeCase(name.substring(3));
+            if (INTERNAL_FIELDS.contains(field)) {
+                continue; // field nội bộ + extras (extras xử lý riêng kiểu Map bên dưới)
+            }
             try {
-                fields.put(toSnakeCase(name.substring(3)), formatValue(getter.invoke(record)));
+                fields.put(field, formatValue(getter.invoke(record)));
             } catch (ReflectiveOperationException e) {
                 // getter lỗi thì bỏ qua field đó — không làm hỏng cả record
             }

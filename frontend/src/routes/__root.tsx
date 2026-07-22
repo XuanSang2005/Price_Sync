@@ -4,7 +4,7 @@ import type { EventSummary, Health } from '../types'
 import { useTheme } from '../lib/theme'
 import { StatusDot } from '../lib/status'
 import {
-  SyncIcon, GridIcon, BellIcon, ListIcon, LinkIcon, ColumnsIcon,
+  SyncIcon, GridIcon, BellIcon, LinkIcon, ColumnsIcon,
   SunIcon, MoonIcon, MenuIcon,
 } from '../components/icons'
 
@@ -41,7 +41,7 @@ function RootLayout() {
       fetch('/api/v1/health')
         .then((r) => r.json())
         .then((d: Health) => setHealth(d))
-        .catch(() => setHealth({ status: 'degraded', api: false, db: false, checked_at: '' }))
+        .catch(() => setHealth({ status: 'degraded', api: false, db: false, version: 'dev', environment: 'LOCAL', checked_at: '' }))
     }
     load()
     const t = setInterval(load, 10000)
@@ -107,14 +107,6 @@ function RootLayout() {
               </div>
             )}
           </Link>
-          <Link to="/logs" className="block" onClick={() => setMenuOpen(false)}>
-            {({ isActive }) => (
-              <div className={navClass(isActive)}>
-                <ListIcon />
-                <span>Logs</span>
-              </div>
-            )}
-          </Link>
 
           <div className="text-[11px] uppercase tracking-[0.06em] text-faint px-2.5 pt-4 pb-2 font-semibold">
             Configure
@@ -138,7 +130,7 @@ function RootLayout() {
         </nav>
 
         <div className="px-4 py-[13px] border-t border-border text-[11.5px] text-muted flex flex-col gap-[3px]">
-          <div>Build 2.4.0 · UAT</div>
+          <div>Build {health?.version ?? 'dev'} · {health?.environment ?? 'LOCAL'}</div>
           <div className="font-mono text-[10.5px] text-faint">price-events · v1</div>
         </div>
       </aside>
@@ -164,9 +156,6 @@ function RootLayout() {
             <div className="font-semibold text-[15px] tracking-tight">Price integration console</div>
           </div>
           <div className="flex items-center gap-[11px]">
-            <span className="font-mono text-[11px] font-medium text-muted border border-border px-[9px] py-1 rounded-md bg-surface2">
-              UAT
-            </span>
             <span className="flex items-center gap-[7px] text-[12.5px] font-medium border border-border px-3 py-1 rounded-full bg-surface2">
               <span
                 className={'w-2 h-2 rounded-full ' + (connected ? 'bg-green' : 'bg-accent')}
@@ -184,7 +173,7 @@ function RootLayout() {
               >
                 <BellIcon size={16} />
                 {attention.length > 0 && (
-                  <span className="absolute -top-[5px] -right-[5px] min-w-[16px] h-4 px-1 rounded-full bg-accent text-accent-text text-[10px] font-bold grid place-items-center border-2 border-surface">
+                  <span className="absolute -top-[6px] -right-[6px] min-w-[20px] h-5 px-1.5 rounded-full bg-accent text-accent-text text-[10.5px] font-bold grid place-items-center border-2 border-surface leading-none">
                     {attention.length}
                   </span>
                 )}

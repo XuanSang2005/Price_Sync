@@ -47,14 +47,6 @@ export const BellIcon = ({ size = 17, className }: P) =>
     </>
   ))
 
-export const ListIcon = ({ size = 17, className }: P) =>
-  svg(size, className, (
-    <>
-      <line x1="5" y1="7" x2="19" y2="7" />
-      <line x1="5" y1="12" x2="19" y2="12" />
-      <line x1="5" y1="17" x2="14" y2="17" />
-    </>
-  ))
 
 export const LinkIcon = ({ size = 17, className }: P) =>
   svg(size, className, (
@@ -183,3 +175,9 @@ export const ArrowRightIcon = ({ size = 13, className }: P) =>
       <polyline points="13 7 18 12 13 17" />
     </>
   ))
+
+export const ChevronUpIcon = ({ size = 13, className }: P) =>
+  svg(size, className, <polyline points="6 15 12 9 18 15" />)
+
+export const ChevronDownIcon = ({ size = 13, className }: P) =>
+  svg(size, className, <polyline points="6 9 12 15 18 9" />)

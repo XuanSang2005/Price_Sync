@@ -32,7 +32,7 @@ import price_sync.domain.batch.PriceBatchRepository;
 import price_sync.domain.record.PriceRecord;
 import price_sync.domain.record.PriceRecordRepository;
 import price_sync.domain.record.RecordStatus;
-import price_sync.intake.error.InValidIdException;
+import price_sync.error.InValidIdException;
 
 @Component
 public class BatchProcessor {

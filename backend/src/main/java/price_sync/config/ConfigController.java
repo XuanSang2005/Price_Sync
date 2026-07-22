@@ -11,6 +11,9 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.PathVariable;
 
+import price_sync.config.dto.ConfigResponse;
+import price_sync.config.dto.ConfigUpdateRequest;
+
 
 
 @RestController

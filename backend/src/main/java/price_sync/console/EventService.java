@@ -5,12 +5,10 @@ import price_sync.console.dto.EventDetail;
 import price_sync.console.dto.EventRecord;
 import price_sync.console.dto.EventLog;
 import price_sync.console.dto.EventFile;
-import price_sync.console.dto.GlobalLog;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -23,7 +21,7 @@ import price_sync.domain.config.ConfigRepository;
 import price_sync.domain.batch.PriceBatch;
 import price_sync.domain.batch.PriceBatchRepository;
 import price_sync.domain.record.PriceRecordRepository;
-import price_sync.intake.error.InValidIdException;
+import price_sync.error.InValidIdException;
 
 @Service
 public class EventService {
@@ -103,23 +101,6 @@ public class EventService {
         priceBatchRepository.findById(batchId).orElseThrow(InValidIdException::new);
         return batchLogRepository.findByBatchIdOrderByCreatedAtAsc(batchId).stream()
                 .map(l -> new EventLog(l.getStatus(), l.getNote(), l.getCreatedAt()))
-                .toList();
-    }
-
-    // Nhật ký vòng đời của MỌI batch, mới nhất trước — cho trang Logs toàn cục.
-    public List<GlobalLog> getAllLogs() {
-        // Bản đồ id nội bộ -> mã batch nghiệp vụ, để hiện id thân thiện
-        Map<Long, String> batchIdByPk = new HashMap<>();
-        for (PriceBatch b : priceBatchRepository.findAll()) {
-            batchIdByPk.put(b.getId(), b.getBatchId());
-        }
-        return batchLogRepository.findAllByOrderByCreatedAtDesc().stream()
-                .map(l -> new GlobalLog(
-                        l.getBatchId(),
-                        batchIdByPk.getOrDefault(l.getBatchId(), "?"),
-                        l.getStatus(),
-                        l.getNote(),
-                        l.getCreatedAt()))
                 .toList();
     }
 }

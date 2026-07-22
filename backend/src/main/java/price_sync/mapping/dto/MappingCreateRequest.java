@@ -1,10 +1,9 @@
-package price_sync.mapping;
+package price_sync.mapping.dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-// DTO trả về cho UI (snake_case khớp JSON; kèm id để UI xoá đúng dòng).
-public record MappingResponse(
-        Long id,
+// DTO khai luật mới từ UI. rule_value nullable (DIRECT để trống).
+public record MappingCreateRequest(
         @JsonProperty("record_type") String recordType,
         int position,
         @JsonProperty("json_field") String jsonField,

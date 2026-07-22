@@ -12,7 +12,7 @@ function resultText(status: string): string {
   switch (status) {
     case 'WRITTEN': return 'Written to Xcenter'
     case 'PARTIAL': return 'Written, some set aside'
-    case 'FAILED': return 'Failed — see detail'
+    case 'FAILED': return 'Failed - see detail'
     case 'PENDING_WRITE': return 'Retry pending'
     default: return 'Processing'
   }
@@ -47,7 +47,7 @@ function EventsPage() {
     (active ? 'bg-surface text-fg font-semibold shadow-[var(--shadow)]' : 'bg-transparent text-muted font-medium')
 
   return (
-    <div className="px-7 pt-[26px] pb-11 max-w-[1220px] mx-auto w-full flex flex-col gap-[18px]">
+    <div className="px-7 pt-[26px] pb-11 w-full flex flex-col gap-[18px]">
       <div>
         <h1 className="m-0 text-[21px] font-semibold tracking-tight">Events</h1>
         <p className="mt-[5px] text-[13.5px] text-muted">Every price event, received to written.</p>
@@ -78,21 +78,21 @@ function EventsPage() {
         <div className="overflow-x-auto">
           <div className="min-w-[720px]">
             <div className="grid gap-3 px-[18px] py-[11px] border-b border-border bg-surface2 text-[10.5px] uppercase tracking-[0.05em] text-faint font-semibold"
-                 style={{ gridTemplateColumns: '110px 1.2fr 70px 130px 1.4fr' }}>
-              <div>Time</div><div>Batch ID</div><div>Ver</div><div>Status</div><div>Result</div>
+                 style={{ gridTemplateColumns: '1.4fr 2fr 0.7fr 1.4fr 1.8fr' }}>
+              <div>Time</div><div>Batch ID</div><div className="text-center">Ver</div><div className="text-center">Status</div><div className="text-right">Result</div>
             </div>
             {rows.map((e) => (
               <div
                 key={e.id}
                 onClick={() => navigate({ to: '/events/$id', params: { id: String(e.id) } })}
                 className="grid gap-3 px-[18px] py-[13px] border-b border-border items-center cursor-pointer hover:bg-surface2"
-                style={{ gridTemplateColumns: '110px 1.2fr 70px 130px 1.4fr' }}
+                style={{ gridTemplateColumns: '1.4fr 2fr 0.7fr 1.4fr 1.8fr' }}
               >
-                <div className="font-mono text-[11.5px] text-muted">{formatTimeDate(e.generated_at)}</div>
-                <div className="font-mono text-[12px] font-medium truncate">{e.batch_id}</div>
-                <div className="font-mono text-[12px] text-muted">v{e.version}</div>
-                <div><StatusPill status={e.status} /></div>
-                <div className="text-[12px] text-muted truncate">{resultText(e.status)}</div>
+                <div className="font-mono text-[11.5px] text-muted whitespace-nowrap">{formatTimeDate(e.generated_at)}</div>
+                <div className="font-mono text-[12px] font-medium truncate min-w-0">{e.batch_id}</div>
+                <div className="font-mono text-[12px] text-muted text-center">v{e.version}</div>
+                <div className="flex justify-center"><StatusPill status={e.status} /></div>
+                <div className="text-[12px] text-muted truncate min-w-0 text-right">{resultText(e.status)}</div>
               </div>
             ))}
             {rows.length === 0 && (

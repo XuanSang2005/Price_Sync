@@ -6,4 +6,6 @@ public interface MappingRuleRepository extends JpaRepository<MappingRule, Long> 
 
 
     boolean existsByJsonField(String jsonField);
+
+    void deleteByRecordType(String recordType);
 }

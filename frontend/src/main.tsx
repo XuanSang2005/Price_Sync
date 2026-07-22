@@ -2,7 +2,7 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { RouterProvider, createRouter } from '@tanstack/react-router'
 import './index.css'
-import { routeTree } from './routeTree.gen' // plugin tự sinh — đừng sửa tay
+import { routeTree } from './routeTree.gen' // plugin tự sinh - đừng sửa tay
 
 // Tạo router từ cây route (plugin sinh ra từ thư mục routes/)
 const router = createRouter({ routeTree })

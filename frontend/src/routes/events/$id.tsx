@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback } from 'react'
 import type { EventDetail, EventLog, EventFile, EventRecord } from '../../types'
 import { StatusPill, RecordPill } from '../../lib/status'
 import { formatTimeDate } from '../../utils/format'
-import { RefreshIcon, CheckIcon, XIcon, AlertIcon } from '../../components/icons'
+import { RefreshIcon, CheckIcon, XIcon, AlertIcon, DownloadIcon } from '../../components/icons'
 
 export const Route = createFileRoute('/events/$id')({ component: EventDetailPage })
 
@@ -11,16 +11,20 @@ type StepState = 'done' | 'current' | 'error' | 'todo'
 
 // Build the 4 lifecycle steps from real logs + current status.
 function buildSteps(status: string, logStatuses: Set<string>): { label: string; state: StepState }[] {
-  const beyondReceived = ['PROCESSING', 'WRITING', 'PENDING_WRITE', 'WRITTEN', 'PARTIAL', 'FAILED']
+  const beyondProcessing = ['WRITING', 'PENDING_WRITE', 'WRITTEN', 'PARTIAL', 'FAILED']
   const written = status === 'WRITTEN' || status === 'PARTIAL'
+  // FAILED có 2 nguyên nhân: abort ở validation (không log PENDING_WRITE/WRITING) vs hỏng khi ghi file.
+  const failedAtWrite = status === 'FAILED' && (logStatuses.has('PENDING_WRITE') || logStatuses.has('WRITING'))
   const proc: StepState =
-    logStatuses.has('PROCESSING') || beyondReceived.includes(status) ? 'done'
+    (status === 'FAILED' && !failedAtWrite) ? 'error' // abort ở validation → lỗi TẠI Processing
+    : status === 'PROCESSING' ? 'current' // đang xử lý = current, KHÔNG phải done
+    : (beyondProcessing.includes(status) || logStatuses.has('PROCESSING')) ? 'done'
     : status === 'RECEIVED' ? 'current' : 'todo'
   const writing: StepState =
     written ? 'done'
     : status === 'PENDING_WRITE' ? 'current'
-    : status === 'FAILED' ? 'error'
-    : status === 'PROCESSING' ? 'current' : 'todo'
+    : failedAtWrite ? 'error' // chỉ đỏ Writing khi thật sự hỏng ở bước ghi
+    : 'todo' // PROCESSING / FAILED-validation chưa tới Writing → todo
   const finalLabel = status === 'FAILED' ? 'Failed' : status === 'PARTIAL' ? 'Partial'
     : status === 'PENDING_WRITE' ? 'Pending' : 'Written'
   const finalState: StepState =
@@ -86,10 +90,13 @@ function EventDetailPage() {
   }
 
   function retry() {
-    fetch(`/api/v1/events/${id}/retry`, { method: 'POST' }).then(() => {
-      showToast('Retry requested')
-      setTimeout(load, 400)
-    })
+    fetch(`/api/v1/events/${id}/retry`, { method: 'POST' })
+      .then((r) => {
+        if (!r.ok) { showToast('Retry failed'); return }
+        showToast('Retry requested')
+        setTimeout(load, 400)
+      })
+      .catch(() => showToast('Retry failed'))
   }
 
   function downloadFile() {
@@ -109,10 +116,10 @@ function EventDetailPage() {
 
   const steps = buildSteps(detail.status, new Set(logs.map((l) => l.status)))
   const setAside = detail.records.filter((r: EventRecord) => r.validation_status === 'SET_ASIDE')
-  const canRetry = detail.status === 'FAILED' || detail.status === 'PENDING_WRITE'
+  const canRetry = detail.status === 'FAILED' // khớp backend: chỉ FAILED mới re-drive; PENDING_WRITE tự retry theo scheduler
 
   return (
-    <div className="px-7 pt-[26px] pb-11 max-w-[1000px] mx-auto w-full flex flex-col gap-5">
+    <div className="px-7 pt-[26px] pb-11 w-full flex flex-col gap-5">
       {/* Header */}
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div className="min-w-0">
@@ -146,22 +153,21 @@ function EventDetailPage() {
         </div>
       </div>
 
-      {/* Stepper */}
-      <div className="bg-surface border border-border rounded-xl p-[18px]">
-        <div className="flex items-center">
+      {/* Stepper - mỗi step là 1 ô flex-1 (dot cách đều), đường nối absolute canh đúng tâm chấm */}
+      <div className="bg-surface border border-border rounded-xl px-7 py-6">
+        <div className="flex">
           {steps.map((s, i) => {
             const c = stepColor(s.state)
             return (
-              <div key={i} className="flex items-center flex-1 min-w-0">
-                <div className="flex flex-col items-center gap-1.5 flex-none">
-                  <span className={'w-6 h-6 rounded-full grid place-items-center border ' + c.bg + ' ' + c.text + ' ' + c.ring}>
-                    {s.state === 'done' ? <CheckIcon size={12} /> : s.state === 'error' ? <XIcon size={11} /> : s.state === 'current' ? '•' : ''}
-                  </span>
-                  <span className={'text-[10px] font-medium whitespace-nowrap ' + c.text}>{s.label}</span>
-                </div>
+              <div key={i} className="flex-1 flex flex-col items-center relative min-w-0">
                 {i < steps.length - 1 && (
-                  <div className={'flex-1 h-0.5 mx-1.5 mb-[18px] rounded ' + (s.state === 'done' ? 'bg-green' : 'bg-border')} />
+                  <div className={'absolute top-3 -translate-y-1/2 h-0.5 rounded ' + (s.state === 'done' ? 'bg-green' : 'bg-border')}
+                    style={{ left: 'calc(50% + 13px)', width: 'calc(100% - 26px)' }} />
                 )}
+                <span className={'relative z-10 w-6 h-6 rounded-full grid place-items-center border ' + c.bg + ' ' + c.text + ' ' + c.ring}>
+                  {s.state === 'done' ? <CheckIcon size={12} /> : s.state === 'error' ? <XIcon size={11} /> : s.state === 'current' ? '•' : ''}
+                </span>
+                <span className={'mt-2 text-[10px] font-medium whitespace-nowrap ' + c.text}>{s.label}</span>
               </div>
             )
           })}
@@ -176,9 +182,9 @@ function EventDetailPage() {
         ) : (
           logs.map((l, i) => (
             <div key={i} className="flex items-center gap-3 px-[18px] py-2.5 border-b border-border text-[12.5px]">
-              <span className="font-mono text-[11px] text-faint w-[92px] flex-none">{formatTimeDate(l.created_at)}</span>
+              <span className="font-mono text-[11px] text-faint w-[108px] flex-none whitespace-nowrap">{formatTimeDate(l.created_at)}</span>
               <StatusPill status={l.status} />
-              <span className="text-muted flex-1 min-w-0 truncate">{l.note || '—'}</span>
+              <span className="text-muted flex-1 min-w-0 truncate">{l.note || '-'}</span>
             </div>
           ))
         )}
@@ -204,8 +210,8 @@ function EventDetailPage() {
           <span className="font-semibold text-[13.5px]">Generated MNT file</span>
           {file?.exists && (
             <button onClick={downloadFile}
-              className="text-[11.5px] font-medium text-fg bg-surface border border-border px-2.5 py-1 rounded-md cursor-pointer hover:bg-surface2">
-              Download
+              className="inline-flex items-center gap-1.5 text-[11.5px] font-medium text-fg bg-surface border border-border px-2.5 py-1 rounded-md cursor-pointer hover:bg-surface2">
+              <DownloadIcon size={12} /> Download
             </button>
           )}
         </div>
@@ -248,7 +254,7 @@ function EventDetailPage() {
         </div>
         {setAside.length > 0 && (
           <div className="px-[18px] py-2.5 text-[12px] text-amber flex items-center gap-2 bg-amber-bg border-t border-border">
-            <AlertIcon /> {setAside.length} set aside — excluded from file.
+            <AlertIcon /> {setAside.length} set aside - excluded from file.
           </div>
         )}
       </div>

@@ -4,7 +4,6 @@ import price_sync.console.dto.EventSummary;
 import price_sync.console.dto.EventDetail;
 import price_sync.console.dto.EventLog;
 import price_sync.console.dto.EventFile;
-import price_sync.console.dto.GlobalLog;
 
 import org.springframework.web.bind.annotation.RestController;
 
@@ -53,12 +52,6 @@ public class EventController {
     @GetMapping("/api/v1/events/{id}/file")
     public EventFile getFile(@PathVariable Long id) {
         return eventService.getFile(id);
-    }
-
-    // Nhật ký vòng đời toàn cục (mọi batch) cho trang Logs
-    @GetMapping("/api/v1/logs")
-    public List<GlobalLog> getAllLogs() {
-        return eventService.getAllLogs();
     }
 
     @PostMapping("/api/v1/events/{id}/retry")

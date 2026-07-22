@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, Fragment } from 'react'
 import type { ConfigItem, Health } from '../../types'
 import { ServerIcon, FolderIcon, SyncIcon, ArrowRightIcon, CheckIcon } from '../../components/icons'
 
@@ -26,11 +26,12 @@ function ConfigField({
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ config_value: draft }),
-    }).then(() => {
+    }).then((r) => {
+      if (!r.ok) { showToast('Save failed'); return }
       setEditing(false)
       showToast('Saved ' + ck)
       onSaved()
-    })
+    }).catch(() => showToast('Save failed'))
   }
 
   return (
@@ -44,7 +45,7 @@ function ConfigField({
             <button onClick={() => { setEditing(false); setDraft(value) }} className="text-[10.5px] text-muted cursor-pointer bg-transparent border-none">Cancel</button>
             <button onClick={save} className="text-[10.5px] font-semibold text-accent cursor-pointer bg-transparent border-none">Save</button>
           </span>
-        ) : (
+        ) : ck.startsWith('_') ? null : (
           <button onClick={() => setEditing(true)} className="text-[10.5px] font-semibold text-accent cursor-pointer bg-transparent border-none">Edit</button>
         )}
       </div>
@@ -56,7 +57,7 @@ function ConfigField({
         />
       ) : (
         <div className={'text-[12.5px] px-2.5 py-[7px] rounded-lg bg-surface2 border border-border break-all ' + (mono ? 'font-mono text-[11.5px]' : '') + (present ? '' : ' text-faint')}>
-          {present ? (value || '—') : 'mock — seed key in DB to enable'}
+          {present ? (value || '-') : 'mock - seed key in DB to enable'}
         </div>
       )}
     </div>
@@ -87,7 +88,7 @@ function ConnectionsPage() {
   ]
 
   return (
-    <div className="px-7 pt-[26px] pb-11 max-w-[1180px] mx-auto w-full flex flex-col gap-[22px]">
+    <div className="px-7 pt-[26px] pb-11 w-full flex flex-col gap-[22px]">
       <div>
         <h1 className="m-0 text-[21px] font-semibold tracking-tight">Connections</h1>
         <p className="mt-[5px] text-[13.5px] text-muted">Data flow and connector config owned by this system.</p>
@@ -101,7 +102,7 @@ function ConnectionsPage() {
         </div>
         <div className="flex items-stretch gap-2 overflow-x-auto pt-3 pb-1">
           {flow.map((f, i) => (
-            <div key={i} className="flex items-center gap-2 flex-1 min-w-[150px]">
+            <Fragment key={i}>
               <div className={
                 'flex-1 rounded-xl p-3.5 flex flex-col gap-2.5 min-w-[150px] ' +
                 (f.self ? 'border-[1.5px] border-accent bg-accent-weak relative' : 'border border-border bg-surface2')
@@ -123,9 +124,9 @@ function ConnectionsPage() {
                 </div>
               </div>
               {i < flow.length - 1 && (
-                <div className="text-faint flex-none"><ArrowRightIcon size={18} /></div>
+                <div className="text-faint flex-none self-center"><ArrowRightIcon size={18} /></div>
               )}
-            </div>
+            </Fragment>
           ))}
         </div>
         <div className="mt-4 text-[11.5px] text-faint">
@@ -146,10 +147,7 @@ function ConnectionsPage() {
           </div>
           <ConfigField label="Endpoint" ck="_endpoint" value="POST /api/v1/price-events" present mono onSaved={load} showToast={showToast} />
           <ConfigField label="IP allowlist (ip_allowlist)" ck="ip_allowlist" value={get('ip_allowlist')} present={has('ip_allowlist')} mono onSaved={load} showToast={showToast} />
-          <ConfigField label="Replay window — min (replay_skew_min)" ck="replay_skew_min" value={get('replay_skew_min')} present={has('replay_skew_min')} onSaved={load} showToast={showToast} />
-          <div className="text-[11px] text-faint mt-auto pt-2 border-t border-border">
-            4 intake guards: IP allowlist · HMAC-SHA256 · API key · timestamp.
-          </div>
+          <ConfigField label="Replay window - min (replay_skew_min)" ck="replay_skew_min" value={get('replay_skew_min')} present={has('replay_skew_min')} onSaved={load} showToast={showToast} />
         </div>
 
         <div className="bg-surface border border-border rounded-xl p-[18px] flex flex-col gap-3.5">
@@ -175,7 +173,7 @@ function ConnectionsPage() {
               <div className="text-[11.5px] text-muted">Business rules</div>
             </div>
           </div>
-          <ConfigField label="Abort threshold — set-aside ratio (abort_threshold)" ck="abort_threshold" value={get('abort_threshold')} present={has('abort_threshold')} onSaved={load} showToast={showToast} />
+          <ConfigField label="Abort threshold - set-aside ratio (abort_threshold)" ck="abort_threshold" value={get('abort_threshold')} present={has('abort_threshold')} onSaved={load} showToast={showToast} />
           <div className="text-[11px] text-faint mt-auto pt-2 border-t border-border">
             Set-aside ratio above this aborts the batch (FAILED). 0.2 = 20%.
           </div>

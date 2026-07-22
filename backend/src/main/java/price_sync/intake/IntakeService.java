@@ -2,7 +2,7 @@ package price_sync.intake;
 
 import price_sync.intake.dto.PriceBatchRequest;
 import price_sync.intake.dto.PriceRecordRequest;
-import price_sync.intake.error.DuplicateBatchException;
+import price_sync.error.DuplicateBatchException;
 
 import java.util.ArrayList;
 import java.util.HashMap;

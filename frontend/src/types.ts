@@ -49,21 +49,23 @@ export type EventFile = {
   note: string | null
 }
 
-// Nhật ký toàn cục (GET /api/v1/logs)
-export type GlobalLog = {
-  event_id: number
-  batch_id: string
-  status: string
-  note: string | null
-  created_at: string
-}
-
 // Sức khoẻ hệ thống (GET /api/v1/health)
 export type Health = {
   status: string
   api: boolean
   db: boolean
+  version: string
+  environment: string
   checked_at: string
+}
+
+// Metadata cho UI mapping (GET /api/v1/mappings/meta) - để FE không hardcode danh sách
+export type MappingMeta = {
+  source_fields: string[]
+  record_types: string[]
+  rule_types: string[]
+  data_types: string[]
+  standard_fields: string[]
 }
 
 // Một dòng cấu hình (GET /api/v1/config)
@@ -72,7 +74,22 @@ export type ConfigItem = {
   config_value: string
 }
 
-// Một luật mapping (GET /api/v1/mappings) — mỗi luật = một cột của file MNT
+// Preview Before/After lấy từ batch thật (GET /api/v1/mappings/preview)
+export type MappingPreviewRow = {
+  before: Record<string, string>
+  fields: Record<string, string> // giá trị đã format sẵn — đầu vào rule engine (để FE tính "after" live)
+  record_type: string
+  after: string[] | null
+  mappable: boolean
+  note: string | null
+}
+export type MappingPreview = {
+  business_date: string | null
+  batch_id: string | null
+  rows: MappingPreviewRow[]
+}
+
+// Một luật mapping (GET /api/v1/mappings) - mỗi luật = một cột của file MNT
 export type MappingRule = {
   id: number
   record_type: string // FDETL | FDELE | FHEAD | FTAIL
@@ -83,4 +100,5 @@ export type MappingRule = {
   rule_value: string | null
   data_type: string | null // STRING | NUMBER | DATE (null = field cố định, không kiểm)
   required: boolean
+  locked: boolean // cột chuẩn (hợp đồng Oracle) — khoá cứng: không đổi nguồn / xoá
 }

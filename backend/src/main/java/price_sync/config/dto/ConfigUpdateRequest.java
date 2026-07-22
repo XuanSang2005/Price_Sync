@@ -1,4 +1,4 @@
-package price_sync.config;
+package price_sync.config.dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 

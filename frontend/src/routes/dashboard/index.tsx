@@ -42,7 +42,7 @@ function DashboardPage() {
   }, [load])
 
   function retry(id: number) {
-    fetch(`/api/v1/events/${id}/retry`, { method: 'POST' }).then(() => load())
+    fetch(`/api/v1/events/${id}/retry`, { method: 'POST' }).then((r) => { if (r.ok) load() })
   }
 
   const total = Object.values(metrics).reduce((a, b) => a + b, 0)
@@ -71,14 +71,14 @@ function DashboardPage() {
   ]
 
   return (
-    <div className="px-7 pt-[26px] pb-11 max-w-[1220px] mx-auto w-full flex flex-col gap-5">
+    <div className="px-7 pt-[26px] pb-11 w-full flex flex-col gap-5">
       <div className="flex items-end justify-between gap-4 flex-wrap">
         <div>
           <h1 className="m-0 text-[21px] font-semibold tracking-tight">Dashboard</h1>
           <p className="mt-[5px] text-[13.5px] text-muted">Pipeline status up to the Xcenter inbound folder.</p>
         </div>
         <span className="text-[12px] text-muted font-mono">
-          {health?.checked_at ? 'Updated ' + formatTimeDate(health.checked_at) : 'UAT'}
+          {health?.checked_at ? 'Updated ' + formatTimeDate(health.checked_at) : (health?.environment ?? '')}
         </span>
       </div>
 
@@ -109,7 +109,7 @@ function DashboardPage() {
               {bars.map((b, i) => (
                 <div key={i} className="flex-1 flex flex-col items-center gap-1.5 h-full justify-end">
                   <div
-                    title={b.label + ':00 — ' + b.count + ' events'}
+                    title={b.label + ':00 - ' + b.count + ' events'}
                     className={
                       'w-full rounded-t ' +
                       (b.count === maxBar ? 'bg-accent' : 'bg-accent-weak border border-accent-weak')
@@ -146,13 +146,13 @@ function DashboardPage() {
             </div>
           ))}
           <div className="text-[11px] text-faint mt-auto leading-relaxed">
-            Store delivery is handled by Xstore — out of scope.
+            Store delivery is handled by Xstore - out of scope.
           </div>
         </div>
       </div>
 
       {/* Attention + recent */}
-      <div className="grid gap-4 items-start" style={{ gridTemplateColumns: '1.15fr 1fr' }}>
+      <div className="grid gap-4 items-stretch" style={{ gridTemplateColumns: '1.15fr 1fr' }}>
         <div className="bg-surface border border-border rounded-xl overflow-hidden">
           <div className="flex items-center justify-between px-[18px] py-3.5 border-b border-border">
             <div className="font-semibold text-[13.5px] flex items-center gap-2">
@@ -165,12 +165,11 @@ function DashboardPage() {
             <div className="px-[18px] py-6 text-[13px] text-muted text-center">All clear.</div>
           ) : (
             attention.slice(0, 6).map((e) => (
-              <div key={e.id} className="flex items-center gap-3 px-[18px] py-3 border-b border-border text-[12.5px]">
-                <span className="font-mono text-[11px] text-faint w-[92px] flex-none">{formatTimeDate(e.generated_at)}</span>
+              <div key={e.id} className="flex items-center gap-3 px-[18px] min-h-[52px] border-b border-border text-[12.5px]">
+                <span className="font-mono text-[11px] text-faint w-[116px] flex-none whitespace-nowrap">{formatTimeDate(e.generated_at)}</span>
                 <StatusDot status={e.status} />
-                <div className="flex-1 min-w-0">
-                  <div className="font-medium truncate">{e.batch_id}</div>
-                  <div className="text-[11px] text-muted font-mono">{e.status}</div>
+                <div className="flex-1 min-w-0 font-mono text-[11.5px] truncate">
+                  {e.batch_id} <span className="text-muted">· {e.status}</span>
                 </div>
                 <div className="flex gap-1.5 flex-none">
                   <button
@@ -208,9 +207,9 @@ function DashboardPage() {
               <div
                 key={e.id}
                 onClick={() => navigate({ to: '/events/$id', params: { id: String(e.id) } })}
-                className="flex items-center gap-3 px-[18px] py-[11px] border-b border-border text-[12.5px] cursor-pointer hover:bg-surface2"
+                className="flex items-center gap-3 px-[18px] min-h-[52px] border-b border-border text-[12.5px] cursor-pointer hover:bg-surface2"
               >
-                <span className="font-mono text-[11px] text-faint w-[92px] flex-none">{formatTimeDate(e.generated_at)}</span>
+                <span className="font-mono text-[11px] text-faint w-[116px] flex-none whitespace-nowrap">{formatTimeDate(e.generated_at)}</span>
                 <div className="flex-1 min-w-0 font-mono text-[11.5px] truncate">
                   {e.batch_id} <span className="text-muted">· v{e.version}</span>
                 </div>

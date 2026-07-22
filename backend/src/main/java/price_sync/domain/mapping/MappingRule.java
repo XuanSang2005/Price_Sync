@@ -36,7 +36,12 @@ public class MappingRule {
     private String dataType; 
 
     @Column(nullable = false)
-    private boolean required; 
+    private boolean required;
+
+    // Cột chuẩn (hợp đồng Oracle) — khoá cứng ở UI: không đổi nguồn / không xoá.
+    // Chỉ true cho các dòng SEED chuẩn (V19 set); rule tạo qua API luôn false (constructor không set).
+    @Column(nullable = false)
+    private boolean locked;
 
     protected MappingRule() {
     }
@@ -92,5 +97,9 @@ public class MappingRule {
 
     public boolean isRequired() {
         return required;
+    }
+
+    public boolean isLocked() {
+        return locked;
     }
 }
