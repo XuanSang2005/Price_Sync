@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,7 +20,7 @@ import price_sync.domain.mapping.MappingRule;
 import price_sync.domain.mapping.MappingRuleRepository;
 import price_sync.domain.record.PriceRecord;
 import price_sync.domain.record.PriceRecordRepository;
-import price_sync.error.InValidIdException;
+import price_sync.error.InvalidIdException;
 import price_sync.error.LockedMappingException;
 import price_sync.mapping.dto.MappingCreateRequest;
 import price_sync.mapping.dto.MappingMeta;
@@ -69,7 +70,7 @@ public class MappingService {
 
     @Transactional
     public void delete(Long id) {
-        MappingRule rule = mappingRuleRepository.findById(id).orElseThrow(InValidIdException::new);
+        MappingRule rule = mappingRuleRepository.findById(id).orElseThrow(InvalidIdException::new);
         if (rule.isLocked()) {
             throw new LockedMappingException(); // không cho xoá cột chuẩn
         }
@@ -86,13 +87,29 @@ public class MappingService {
                 .toList();
         int maxLockedPos = current.stream().filter(MappingRule::isLocked)
                 .mapToInt(MappingRule::getPosition).max().orElse(0);
+        // Tên cột chuẩn ĐANG CÓ THẬT của record_type này. Dùng để phân biệt hai ca trùng tên:
+        //   - client gửi lại đúng cột chuẩn của tab đó  → bỏ qua, server giữ bản DB (hợp đồng);
+        //   - client chiếm dụng một tên chuẩn KHÔNG thuộc tab đó (vd PRICE ở FDELE) → 409, không nuốt im lặng.
+        Set<String> lockedNames = current.stream().filter(MappingRule::isLocked)
+                .map(MappingRule::getMntColumn)
+                .collect(Collectors.toSet());
+
+        // Kiểm TOÀN BỘ payload TRƯỚC khi ghi: sai một cột thì cả lệnh Save hỏng, DB không đổi nửa vời.
+        for (MappingCreateRequest req : rules) {
+            if (!lockedNames.contains(req.mntColumn()) && STANDARD_MNT_COLUMNS.contains(req.mntColumn())) {
+                throw new LockedMappingException(
+                        "column " + req.mntColumn() + " is a standard MNT column (Oracle contract) "
+                                + "and cannot be used as a custom column in " + recordType);
+            }
+        }
+
         // xoá CHỈ cột động cũ, giữ nguyên cột chuẩn
         current.stream().filter(r -> !r.isLocked()).forEach(mappingRuleRepository::delete);
         mappingRuleRepository.flush(); // ép DELETE xuống trước, tránh INSERT đụng uq_mapping_slot
         // chèn cột động mới, position nối SAU khối cột chuẩn; cột chuẩn client gửi thì bỏ qua
         int pos = maxLockedPos;
         for (MappingCreateRequest req : rules) {
-            if (STANDARD_MNT_COLUMNS.contains(req.mntColumn())) {
+            if (lockedNames.contains(req.mntColumn())) {
                 continue;
             }
             pos++;
@@ -168,7 +185,8 @@ public class MappingService {
         return new MappingMeta(
                 new ArrayList<>(fields),
                 List.of("FDETL", "FDELE"), // loại record Mapper sinh ra (delete→FDELE, còn lại→FDETL)
-                List.of("DIRECT", "DEFAULT", "VALUE_MAP", "SPLIT")); // khớp Mapper.applyRule
+                List.of("DIRECT", "DEFAULT", "VALUE_MAP", "SPLIT"), // khớp Mapper.applyRule
+                STANDARD_MNT_COLUMNS.stream().sorted().toList()); // tên cột chuẩn — UI chặn đặt trùng
     }
 
     // Field nguồn của một record (before) — theo thứ tự dễ đọc.

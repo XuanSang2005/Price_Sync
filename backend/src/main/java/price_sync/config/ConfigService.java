@@ -8,7 +8,7 @@ import org.springframework.transaction.annotation.Transactional;
 import price_sync.config.dto.ConfigResponse;
 import price_sync.domain.config.Config;
 import price_sync.domain.config.ConfigRepository;
-import price_sync.error.InValidIdException;
+import price_sync.error.InvalidIdException;
 
 @Service
 public class ConfigService {
@@ -24,7 +24,7 @@ public class ConfigService {
 
     @Transactional
     public void update(String key, String newValue){
-        Config config = configRepository.findByConfigKey(key).orElseThrow(InValidIdException::new);
+        Config config = configRepository.findByConfigKey(key).orElseThrow(InvalidIdException::new);
         config.updateValue(newValue);
     }
 }

@@ -8,7 +8,7 @@ export const Route = createFileRoute('/mapping/')({ component: MappingPage })
 function ruleTagCls(t: string) {
   const m: Record<string, string> = {
     DIRECT: 'text-muted bg-surface2', DEFAULT: 'text-amber bg-amber-bg',
-    VALUE_MAP: 'text-accent bg-accent-weak', SPLIT: 'text-green bg-green-bg',
+    VALUE_MAP: 'text-fg bg-accent-weak', SPLIT: 'text-green bg-green-bg',
   }
   return m[t] ?? 'text-muted bg-surface2'
 }
@@ -121,6 +121,10 @@ function MappingPage() {
   // ===== Danh sách ĐỘNG từ backend meta (không hardcode) =====
   const ruleTypes = meta?.rule_types ?? []
   const recordTypes = meta?.record_types ?? []
+  // Tên cột chuẩn do BACKEND công bố (STANDARD_MNT_COLUMNS) — không hardcode ở đây.
+  // Cột chuẩn của tab hiện tại đã nằm trong `cols` (locked); các tên còn lại là tên DÀNH RIÊNG,
+  // cột tự thêm không được lấy (vd đặt PRICE ở FDELE → server 409, trước đây bị nuốt im lặng).
+  const reservedColumns = new Set(meta?.standard_columns ?? [])
 
   // Nguồn: source_fields động (reflection + extras) + field thấy trong preview thật
   const previewFields = preview?.rows?.[0] ? Object.keys(preview.rows[0].before) : []
@@ -178,6 +182,9 @@ function MappingPage() {
     if (!jf) { showToast('Enter a JSON field'); return }
     const mnt = (newCol.mnt_column.trim() || jf.toUpperCase()).replace(/\s+/g, '_')
     if (cols.some((c) => c.mnt_column === mnt)) { showToast('Column ' + mnt + ' already exists'); return }
+    // Tên dành riêng cho cột chuẩn: cột chuẩn của tab này đã có sẵn (case trên bắt), nên vào đây
+    // nghĩa là đang lấy tên chuẩn của tab KHÁC (vd PRICE ở FDELE) — server sẽ 409, chặn ngay tại đây.
+    if (reservedColumns.has(mnt)) { showToast(mnt + ' is a standard MNT column - pick another name'); return }
     setCols((cs) => [...cs, {
       key: 'c' + (KEY++), json_field: jf, mnt_column: mnt,
       rule_type: 'DIRECT', rule_value: null, required: newCol.required, locked: false,
@@ -209,7 +216,11 @@ function MappingPage() {
     fetch(`/api/v1/mappings/${recordType}`, {
       method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
     }).then((r) => {
-      if (!r.ok) { showToast('Save failed'); return }
+      if (!r.ok) {
+        // Server từ chối (vd 409 chiếm dụng tên cột chuẩn) → hiện đúng lý do, đừng nuốt thành "Save failed".
+        r.json().then((err) => showToast(err.message ?? 'Save failed')).catch(() => showToast('Save failed'))
+        return
+      }
       showToast('Mapping saved')
       setCustomSources([])
       // Chỉ clear dirty KHI rules mới về (reload OK) → nếu GET lỗi thì giữ dirty, không revert âm thầm.
@@ -263,12 +274,12 @@ function MappingPage() {
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
           <h1 className="m-0 text-[21px] font-semibold tracking-tight">Field mapping</h1>
-          <p className="mt-[5px] text-[13.5px] text-muted">
+          <p className="mt-[5px] text-[13px] text-muted">
             Drag a source field onto a target column. JSON order is free; the MNT file follows the target order top→bottom.
           </p>
         </div>
         <button onClick={save} disabled={!dirty}
-          className={'inline-flex items-center gap-1.5 text-[13px] font-semibold px-4 py-2 rounded-[9px] border ' +
+          className={'inline-flex items-center gap-1.5 text-[13px] font-semibold px-4 py-2 rounded-lg border ' +
             (dirty ? 'text-accent-text bg-accent border-accent cursor-pointer hover:brightness-95' : 'text-faint bg-surface2 border-border cursor-not-allowed')}>
           {dirty ? <SaveIcon size={14} /> : <CheckIcon size={14} />} {dirty ? 'Save mapping' : 'Saved'}
         </button>
@@ -276,10 +287,10 @@ function MappingPage() {
 
       {/* Toolbar: record_type tabs + search + progress */}
       <div className="flex items-center gap-3 flex-wrap">
-        <div className="flex gap-[3px] p-[3px] bg-surface2 border border-border rounded-[9px]">
+        <div className="flex gap-[3px] p-[3px] bg-surface2 border border-border rounded-lg">
           {recordTypes.map((t) => (
             <button key={t} onClick={() => { if (dirty && !confirm('Discard unsaved mapping changes?')) return; setDirty(false); setRecordType(t) }}
-              className={'text-[12.5px] px-3 py-[5px] rounded-md border-none cursor-pointer font-mono ' +
+              className={'text-[12px] px-3 py-[5px] rounded-md border-none cursor-pointer font-mono ' +
                 (recordType === t ? 'bg-surface text-fg font-semibold shadow-[var(--shadow)]' : 'bg-transparent text-muted')}>
               {t}
             </button>
@@ -288,10 +299,10 @@ function MappingPage() {
         <div className="relative flex-1 min-w-[180px] max-w-[280px]">
           <span className="absolute left-[11px] top-1/2 -translate-y-1/2 text-faint grid place-items-center"><SearchIcon /></span>
           <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Filter source fields…"
-            className="w-full py-2 pl-[34px] pr-[11px] border border-border rounded-[9px] bg-surface text-fg text-[13px] outline-none focus:border-accent" />
+            className="w-full py-2 pl-[34px] pr-[11px] border border-border rounded-lg bg-surface text-fg text-[13px] outline-none focus:border-accent" />
         </div>
         <div className="ml-auto flex items-center gap-2.5">
-          <span className="text-[12.5px] text-muted font-medium whitespace-nowrap">{mappedCount}/{cols.length} columns mapped</span>
+          <span className="text-[12px] text-muted font-medium whitespace-nowrap">{mappedCount}/{cols.length} columns mapped</span>
           <div className="w-[110px] h-[6px] rounded-full bg-surface2 border border-border overflow-hidden">
             <div className="h-full bg-accent transition-[width] duration-300" style={{ width: (cols.length ? Math.round(mappedCount / cols.length * 100) : 0) + '%' }} />
           </div>
@@ -318,19 +329,19 @@ function MappingPage() {
                     onDragStart={() => { setDragSrc(s); setSelectedSrc(null) }}
                     onDragEnd={() => { setDragSrc(null); setDragOver(null) }}
                     onClick={() => setSelectedSrc(sel ? null : s)}
-                    className={'flex items-center gap-2.5 px-3 py-[9px] border rounded-[10px] relative select-none transition-colors cursor-grab ' +
+                    className={'flex items-center gap-2.5 px-3 py-[9px] border rounded-lg relative select-none transition-colors cursor-grab ' +
                       (sel ? 'bg-surface border-accent shadow-[0_0_0_3px_var(--accent-weak)]'
                         : used ? 'bg-surface2 border-border hover:border-border2'
                         : 'bg-surface border-border hover:border-border2 hover:bg-surface2')}>
                     <svg width="12" height="16" viewBox="0 0 16 20" fill="currentColor" className="flex-none text-[color:var(--grip)]">
                       <circle cx="6" cy="5" r="1.4" /><circle cx="10" cy="5" r="1.4" /><circle cx="6" cy="10" r="1.4" /><circle cx="10" cy="10" r="1.4" /><circle cx="6" cy="15" r="1.4" /><circle cx="10" cy="15" r="1.4" />
                     </svg>
-                    <span className="font-mono text-[12.5px] font-medium flex-1 truncate">{s}</span>
+                    <span className="font-mono text-[12px] font-medium flex-1 truncate">{s}</span>
                     {used ? (
-                      <span title="in use by a column" className="w-[18px] h-[18px] rounded-full bg-green-bg text-green grid place-items-center flex-none"><CheckIcon size={11} /></span>
+                      <span title="in use by a column" className="w-[18px] h-[18px] rounded-full bg-green-bg text-green grid place-items-center flex-none"><CheckIcon size={14} /></span>
                     ) : custom ? (
                       <button onClick={(e) => { e.stopPropagation(); removeSource(s) }} title="Remove custom field"
-                        className="w-[18px] h-[18px] rounded-full grid place-items-center flex-none text-muted hover:text-accent hover:bg-accent-weak cursor-pointer"><XIcon size={11} /></button>
+                        className="w-[18px] h-[18px] rounded-full grid place-items-center flex-none text-muted hover:text-accent hover:bg-accent-weak cursor-pointer"><XIcon size={14} /></button>
                     ) : null}
                     <span data-src-anchor={s} className="absolute -right-[6px] top-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full border-2 border-surface box-border"
                       style={{ background: used ? 'var(--green)' : 'var(--border2)' }} />
@@ -341,7 +352,7 @@ function MappingPage() {
                 <div className="text-[12px] text-muted px-1 py-2">No source fields match "{search.trim()}".</div>
               )}
               {addingSrc ? (
-                <div className="flex gap-2 items-center p-2.5 border border-dashed border-accent rounded-[10px] bg-accent-weak">
+                <div className="flex gap-2 items-center p-2.5 border border-dashed border-accent rounded-lg bg-accent-weak">
                   <input value={newSrc} onChange={(e) => setNewSrc(e.target.value)} placeholder="new_field_name" autoFocus
                     onKeyDown={(e) => { if (e.key === 'Enter') addSource() }}
                     className="font-mono text-[12px] px-2.5 py-1.5 border border-border rounded bg-surface text-fg outline-none focus:border-accent flex-1 min-w-0" />
@@ -350,7 +361,7 @@ function MappingPage() {
                 </div>
               ) : (
                 <button onClick={() => setAddingSrc(true)}
-                  className="flex items-center justify-center gap-1.5 w-full py-2.5 border border-dashed border-border2 rounded-[10px] text-muted text-[12.5px] font-medium cursor-pointer hover:border-accent hover:text-accent hover:bg-accent-weak transition-colors">
+                  className="flex items-center justify-center gap-1.5 w-full py-2.5 border border-dashed border-border2 rounded-lg text-muted text-[12px] font-medium cursor-pointer hover:border-accent hover:text-accent hover:bg-accent-weak transition-colors">
                   <PlusIcon /> Add source field
                 </button>
               )}
@@ -379,7 +390,7 @@ function MappingPage() {
                     onClick={() => { if (selectedSrc) mapSource(c.key, selectedSrc) }}
                     onDoubleClick={() => { if (!selectedSrc && c.json_field && !locked && Date.now() - lastMapRef.current > 350) clearCol(c.key) }}
                     title={c.json_field && !locked ? 'Double-click to unmap' : undefined}
-                    className={'relative flex flex-col gap-2 px-3.5 py-3 border rounded-[10px] bg-surface transition-[border-color,box-shadow] ' +
+                    className={'relative flex flex-col gap-2 px-3.5 py-3 border rounded-lg bg-surface transition-[border-color,box-shadow] ' +
                       (dragOver === c.key ? 'border-accent border-[1.5px] shadow-[0_0_0_3px_var(--accent-weak)] bg-accent-weak'
                         : active ? 'border-border2 border-dashed' : 'border-border') + (selectedSrc ? ' cursor-pointer' : '')}>
                     {/* left anchor */}
@@ -390,21 +401,21 @@ function MappingPage() {
                       <div className="min-w-0">
                         <div className="flex items-center gap-2">
                           <span className="font-mono text-[10px] text-faint w-5">#{i + 1}</span>
-                          <span className="font-mono text-[12.5px] font-medium">{c.mnt_column}</span>
+                          <span className="font-mono text-[12px] font-medium">{c.mnt_column}</span>
                         </div>
                         {c.json_field ? (
                           <div className="flex items-center gap-1.5 mt-1 ml-7 flex-wrap">
-                            <span className="inline-flex items-center gap-1 font-mono text-[10.5px] font-medium text-green bg-green-bg pl-2 pr-1 py-0.5 rounded">
+                            <span className="inline-flex items-center gap-1 font-mono text-[11px] font-medium text-green bg-green-bg pl-2 pr-1 py-0.5 rounded">
                               {c.json_field}
                               {!locked && (
                                 <button onClick={(e) => { e.stopPropagation(); clearCol(c.key) }} title="Unmap"
-                                  className="grid place-items-center rounded-full text-green/60 hover:text-green cursor-pointer"><XIcon size={10} /></button>
+                                  className="grid place-items-center rounded-full text-green/60 hover:text-green cursor-pointer"><XIcon size={14} /></button>
                               )}
                             </span>
                             <span className={'text-[9px] uppercase tracking-wide font-semibold px-1.5 py-0.5 rounded ' + ruleTagCls(c.rule_type)}>{c.rule_type}</span>
                             {/* cột CHUẨN: dồn rule_value + built-in vào ĐÂY để thẻ còn 2 dòng */}
                             {locked && c.rule_value && (
-                              <span title={c.rule_value} className="font-mono text-[9.5px] text-muted px-1.5 py-0.5 border border-border rounded bg-surface2 truncate max-w-[160px]">{c.rule_value}</span>
+                              <span title={c.rule_value} className="font-mono text-[10px] text-muted px-1.5 py-0.5 border border-border rounded bg-surface2 truncate max-w-[160px]">{c.rule_value}</span>
                             )}
                             {locked && (
                               <span title="Standard column (Oracle contract) - config fixed"
@@ -417,16 +428,16 @@ function MappingPage() {
                       </div>
                       <div className="flex items-center gap-1 flex-none">
                         <button onClick={(e) => { e.stopPropagation(); moveCol(i, -1) }} disabled={!canUp} title="Move up"
-                          className={'w-5 h-5 grid place-items-center rounded ' + (canUp ? 'text-muted hover:text-fg cursor-pointer' : 'text-faint/40 cursor-not-allowed')}><ChevronUpIcon size={13} /></button>
+                          className={'w-5 h-5 grid place-items-center rounded ' + (canUp ? 'text-muted hover:text-fg cursor-pointer' : 'text-faint/40 cursor-not-allowed')}><ChevronUpIcon size={14} /></button>
                         <button onClick={(e) => { e.stopPropagation(); moveCol(i, 1) }} disabled={!canDown} title="Move down"
-                          className={'w-5 h-5 grid place-items-center rounded ' + (canDown ? 'text-muted hover:text-fg cursor-pointer' : 'text-faint/40 cursor-not-allowed')}><ChevronDownIcon size={13} /></button>
+                          className={'w-5 h-5 grid place-items-center rounded ' + (canDown ? 'text-muted hover:text-fg cursor-pointer' : 'text-faint/40 cursor-not-allowed')}><ChevronDownIcon size={14} /></button>
                         {locked ? (
                           <span title="Standard column (Oracle contract) - locked: source & column fixed" className="w-5 h-5 grid place-items-center text-faint cursor-not-allowed">
                             <svg viewBox="0 0 12 12" className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth="1.1"><rect x="2.5" y="5.3" width="7" height="4.7" rx="1" /><path d="M4 5.3V4a2 2 0 0 1 4 0v1.3" strokeLinecap="round" /></svg>
                           </span>
                         ) : (
                           <button onClick={(e) => { e.stopPropagation(); removeCol(c.key) }} title="Remove column"
-                            className="w-5 h-5 grid place-items-center text-muted hover:text-accent cursor-pointer"><XIcon size={13} /></button>
+                            className="w-5 h-5 grid place-items-center text-muted hover:text-accent cursor-pointer"><XIcon size={14} /></button>
                         )}
                       </div>
                     </div>
@@ -451,7 +462,7 @@ function MappingPage() {
                 )
               })}
               {adding ? (
-                <div className="flex flex-col gap-2.5 p-3 border border-dashed border-accent rounded-[10px] bg-accent-weak">
+                <div className="flex flex-col gap-2.5 p-3 border border-dashed border-accent rounded-lg bg-accent-weak">
                   {/* Nhập JSON field — MNT (tên + kiểu) tự sinh bên dưới, vẫn sửa được */}
                   <div className="flex flex-col gap-1">
                     <label className="text-[10px] uppercase tracking-wide text-muted font-semibold">JSON field</label>
@@ -468,7 +479,7 @@ function MappingPage() {
                     <label className="flex items-center gap-1 text-[12px] text-muted cursor-pointer select-none">
                       <input type="checkbox" checked={newCol.required} onChange={(e) => setNewCol((n) => ({ ...n, required: e.target.checked }))} /> required
                     </label>
-                    <span className="text-[10.5px] text-faint">rule = DIRECT (edit inline later)</span>
+                    <span className="text-[11px] text-faint">rule = DIRECT (edit inline later)</span>
                     <div className="flex-1" />
                     <button onClick={() => { setAdding(false); setNewCol({ json_field: '', mnt_column: '', required: false, nameEdited: false }) }}
                       className="text-[12px] text-muted px-2.5 py-1 cursor-pointer">Cancel</button>
@@ -477,7 +488,7 @@ function MappingPage() {
                 </div>
               ) : (
                 <button onClick={() => setAdding(true)}
-                  className="flex items-center justify-center gap-1.5 w-full py-2.5 border border-dashed border-border2 rounded-[10px] text-muted text-[12.5px] font-medium cursor-pointer hover:border-accent hover:text-accent hover:bg-accent-weak transition-colors">
+                  className="flex items-center justify-center gap-1.5 w-full py-2.5 border border-dashed border-border2 rounded-lg text-muted text-[12px] font-medium cursor-pointer hover:border-accent hover:text-accent hover:bg-accent-weak transition-colors">
                   <PlusIcon /> Add target column
                 </button>
               )}
@@ -519,7 +530,7 @@ function MappingPage() {
               ])} />
             <div className="flex items-center justify-center gap-2 text-accent text-[12px] font-semibold">
               <span className="h-px w-10 bg-border2" />
-              <span className="inline-flex items-center gap-1.5 bg-accent-weak px-3 py-1 rounded-full">Apply mapping <ArrowRightIcon size={12} /></span>
+              <span className="inline-flex items-center gap-1.5 bg-accent-weak px-3 py-1 rounded-full">Apply mapping <ArrowRightIcon size={14} /></span>
               <span className="h-px w-10 bg-border2" />
             </div>
             <PreviewTable title="After - MNT columns (this becomes the file)" green
@@ -528,14 +539,14 @@ function MappingPage() {
               notes={computedRows.map(({ after }) => (after === null ? 'unmappable - unknown prefix or missing field' : null))} />
           </>
         ) : (
-          <div className="text-[12.5px] text-muted">No sample {recordType} records in the latest batch.</div>
+          <div className="text-[12px] text-muted">No sample {recordType} records in the latest batch.</div>
         )}
       </div>
 
       {toast && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-fg text-bg px-[18px] py-[11px] rounded-[10px] text-[13px] font-medium flex items-center gap-2 shadow-2xl"
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-fg text-bg px-[18px] py-[11px] rounded-lg text-[13px] font-medium flex items-center gap-2 shadow-2xl"
              style={{ animation: 'toastin .2s ease' }}>
-          <CheckIcon size={15} /> {toast}
+          <CheckIcon size={16} /> {toast}
         </div>
       )}
     </div>
@@ -556,7 +567,7 @@ function PreviewTable({ title, headers, rows, green, notes }: {
             <thead>
               <tr className="bg-surface2">
                 {headers.map((h, i) => (
-                  <th key={i} className={'px-3 py-2 text-left font-mono text-[10.5px] font-semibold whitespace-nowrap border-b border-border ' + (green && i === 0 ? 'text-accent' : 'text-muted')}>{h}</th>
+                  <th key={i} className={'px-3 py-2 text-left font-mono text-[11px] font-semibold whitespace-nowrap border-b border-border ' + (green && i === 0 ? 'text-accent' : 'text-muted')}>{h}</th>
                 ))}
               </tr>
             </thead>
@@ -564,7 +575,7 @@ function PreviewTable({ title, headers, rows, green, notes }: {
               {rows.map((row, ri) => (
                 <tr key={ri}>
                   {row.map((v, ci) => (
-                    <td key={ci} className={'px-3 py-2 font-mono text-[11.5px] whitespace-nowrap border-b border-border ' +
+                    <td key={ci} className={'px-3 py-2 font-mono text-[12px] whitespace-nowrap border-b border-border ' +
                       (green && ci === 0 ? 'bg-accent-weak text-accent font-medium ' : '') + (v === '-' || v === '' ? 'text-faint' : '')}>
                       {v === '' ? '-' : v}{green && ci === row.length - 1 && notes?.[ri] ? <span className="text-amber"> · {notes[ri]}</span> : null}
                     </td>

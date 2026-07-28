@@ -21,7 +21,7 @@ import price_sync.domain.config.ConfigRepository;
 import price_sync.domain.batch.PriceBatch;
 import price_sync.domain.batch.PriceBatchRepository;
 import price_sync.domain.record.PriceRecordRepository;
-import price_sync.error.InValidIdException;
+import price_sync.error.InvalidIdException;
 
 @Service
 public class EventService {
@@ -48,7 +48,7 @@ public class EventService {
     }
 
     public EventDetail getEventDetails(Long id) {
-        PriceBatch batch = priceBatchRepository.findById(id).orElseThrow(InValidIdException::new);
+        PriceBatch batch = priceBatchRepository.findById(id).orElseThrow(InvalidIdException::new);
         List<EventRecord> records = priceRecordRepository.findByBatchId(batch.getId()).stream()
                 .map(record -> new EventRecord(
                         record.getChangeId(),
@@ -70,7 +70,7 @@ public class EventService {
 
     // Đọc THẬT nội dung file MNT đã ghi ra cho batch (không dựng lại ở UI).
     public EventFile getFile(Long id) {
-        PriceBatch batch = priceBatchRepository.findById(id).orElseThrow(InValidIdException::new);
+        PriceBatch batch = priceBatchRepository.findById(id).orElseThrow(InvalidIdException::new);
         String fileName = batch.getOutputFile();
         if (fileName == null) {
             return new EventFile(null, false, null, "No file yet (batch not WRITTEN/PARTIAL).");
@@ -98,7 +98,7 @@ public class EventService {
     }
 
     public List<EventLog> getLogs(Long batchId) {
-        priceBatchRepository.findById(batchId).orElseThrow(InValidIdException::new);
+        priceBatchRepository.findById(batchId).orElseThrow(InvalidIdException::new);
         return batchLogRepository.findByBatchIdOrderByCreatedAtAsc(batchId).stream()
                 .map(l -> new EventLog(l.getStatus(), l.getNote(), l.getCreatedAt()))
                 .toList();

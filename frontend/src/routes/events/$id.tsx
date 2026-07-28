@@ -89,16 +89,6 @@ function EventDetailPage() {
     setTimeout(() => setToast(''), 2400)
   }
 
-  function retry() {
-    fetch(`/api/v1/events/${id}/retry`, { method: 'POST' })
-      .then((r) => {
-        if (!r.ok) { showToast('Retry failed'); return }
-        showToast('Retry requested')
-        setTimeout(load, 400)
-      })
-      .catch(() => showToast('Retry failed'))
-  }
-
   function downloadFile() {
     if (!file?.content || !file.file_name) return
     const blob = new Blob([file.content], { type: 'text/plain' })
@@ -116,7 +106,6 @@ function EventDetailPage() {
 
   const steps = buildSteps(detail.status, new Set(logs.map((l) => l.status)))
   const setAside = detail.records.filter((r: EventRecord) => r.validation_status === 'SET_ASIDE')
-  const canRetry = detail.status === 'FAILED' // khớp backend: chỉ FAILED mới re-drive; PENDING_WRITE tự retry theo scheduler
 
   return (
     <div className="px-7 pt-[26px] pb-11 w-full flex flex-col gap-5">
@@ -140,14 +129,8 @@ function EventDetailPage() {
           </div>
         </div>
         <div className="flex gap-2 flex-none flex-wrap">
-          {canRetry && (
-            <button onClick={retry}
-              className="inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-accent-text bg-accent border border-accent px-3.5 py-2 rounded-[9px] cursor-pointer hover:brightness-95">
-              <RefreshIcon /> Retry
-            </button>
-          )}
           <button onClick={load}
-            className="inline-flex items-center gap-1.5 text-[12.5px] font-medium text-fg bg-surface border border-border px-3 py-2 rounded-[9px] cursor-pointer hover:bg-surface2">
+            className="inline-flex items-center gap-1.5 text-[12.5px] font-medium text-fg bg-surface border border-border px-3 py-2 rounded-lg cursor-pointer hover:bg-surface2">
             <RefreshIcon /> Reload
           </button>
         </div>
@@ -260,7 +243,7 @@ function EventDetailPage() {
       </div>
 
       {toast && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-fg text-bg px-[18px] py-[11px] rounded-[10px] text-[13px] font-medium flex items-center gap-2 shadow-2xl"
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-fg text-bg px-[18px] py-[11px] rounded-lg text-[13px] font-medium flex items-center gap-2 shadow-2xl"
              style={{ animation: 'toastin .2s ease' }}>
           <CheckIcon size={15} /> {toast}
         </div>

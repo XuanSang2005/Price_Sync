@@ -64,6 +64,7 @@ export type MappingMeta = {
   source_fields: string[]
   record_types: string[]
   rule_types: string[]
+  standard_columns: string[] // tên cột chuẩn (hợp đồng Oracle) — không được đặt cho cột tự thêm
 }
 
 // Một dòng cấu hình (GET /api/v1/config)

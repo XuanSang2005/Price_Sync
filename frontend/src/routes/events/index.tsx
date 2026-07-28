@@ -43,18 +43,18 @@ function EventsPage() {
     .filter((e) => !q || e.batch_id.toLowerCase().includes(q))
 
   const tabClass = (active: boolean) =>
-    'text-[12.5px] px-3 py-[5px] rounded-md border-none cursor-pointer whitespace-nowrap ' +
+    'text-[12px] px-3 py-[5px] rounded-md border-none cursor-pointer whitespace-nowrap ' +
     (active ? 'bg-surface text-fg font-semibold shadow-[var(--shadow)]' : 'bg-transparent text-muted font-medium')
 
   return (
     <div className="px-7 pt-[26px] pb-11 w-full flex flex-col gap-[18px]">
       <div>
         <h1 className="m-0 text-[21px] font-semibold tracking-tight">Events</h1>
-        <p className="mt-[5px] text-[13.5px] text-muted">Every price event, received to written.</p>
+        <p className="mt-[5px] text-[13px] text-muted">Every price event, received to written.</p>
       </div>
 
       <div className="flex items-center gap-3 flex-wrap">
-        <div className="flex gap-[3px] p-[3px] bg-surface2 border border-border rounded-[9px] flex-wrap">
+        <div className="flex gap-[3px] p-[3px] bg-surface2 border border-border rounded-lg flex-wrap">
           {tabs.map((t) => (
             <button key={t} onClick={() => setStatusFilter(t)} className={tabClass(statusFilter === t)}>
               {t === 'all' ? 'All' : t}
@@ -69,7 +69,7 @@ function EventsPage() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search batch id…"
-            className="w-full py-2 pl-[34px] pr-[11px] border border-border rounded-[9px] bg-surface text-fg text-[13px] outline-none focus:border-accent"
+            className="w-full py-2 pl-[34px] pr-[11px] border border-border rounded-lg bg-surface text-fg text-[13px] outline-none focus:border-accent"
           />
         </div>
       </div>
@@ -77,7 +77,7 @@ function EventsPage() {
       <div className="bg-surface border border-border rounded-xl overflow-hidden">
         <div className="overflow-x-auto">
           <div className="min-w-[720px]">
-            <div className="grid gap-3 px-[18px] py-[11px] border-b border-border bg-surface2 text-[10.5px] uppercase tracking-[0.05em] text-faint font-semibold"
+            <div className="grid gap-3 px-[18px] py-[11px] border-b border-border bg-surface2 text-[11px] uppercase tracking-[0.05em] text-faint font-semibold"
                  style={{ gridTemplateColumns: '1.4fr 2fr 0.7fr 1.4fr 1.8fr' }}>
               <div>Time</div><div>Batch ID</div><div className="text-center">Ver</div><div className="text-center">Status</div><div className="text-right">Result</div>
             </div>
@@ -88,7 +88,7 @@ function EventsPage() {
                 className="grid gap-3 px-[18px] py-[13px] border-b border-border items-center cursor-pointer hover:bg-surface2"
                 style={{ gridTemplateColumns: '1.4fr 2fr 0.7fr 1.4fr 1.8fr' }}
               >
-                <div className="font-mono text-[11.5px] text-muted whitespace-nowrap">{formatTimeDate(e.generated_at)}</div>
+                <div className="font-mono text-[12px] text-muted whitespace-nowrap">{formatTimeDate(e.generated_at)}</div>
                 <div className="font-mono text-[12px] font-medium truncate min-w-0">{e.batch_id}</div>
                 <div className="font-mono text-[12px] text-muted text-center">v{e.version}</div>
                 <div className="flex justify-center"><StatusPill status={e.status} /></div>
@@ -101,7 +101,7 @@ function EventsPage() {
           </div>
         </div>
       </div>
-      <div className="text-[11.5px] text-faint">
+      <div className="text-[12px] text-faint">
         Showing {rows.length} of {events.length} · status covers this system only (received → Xcenter).
       </div>
     </div>

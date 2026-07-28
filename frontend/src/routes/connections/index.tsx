@@ -39,24 +39,24 @@ function ConfigField({
       <div className="flex items-center justify-between">
         <label className="text-[11px] text-muted font-medium">{label}</label>
         {!present ? (
-          <span className="text-[9.5px] font-semibold uppercase tracking-wide text-faint border border-border px-1.5 py-px rounded">no DB</span>
+          <span className="text-[10px] font-semibold uppercase tracking-wide text-faint border border-border px-1.5 py-px rounded">no DB</span>
         ) : editing ? (
           <span className="flex gap-2">
-            <button onClick={() => { setEditing(false); setDraft(value) }} className="text-[10.5px] text-muted cursor-pointer bg-transparent border-none">Cancel</button>
-            <button onClick={save} className="text-[10.5px] font-semibold text-accent cursor-pointer bg-transparent border-none">Save</button>
+            <button onClick={() => { setEditing(false); setDraft(value) }} className="text-[11px] text-muted cursor-pointer bg-transparent border-none">Cancel</button>
+            <button onClick={save} className="text-[11px] font-semibold text-accent cursor-pointer bg-transparent border-none">Save</button>
           </span>
         ) : ck.startsWith('_') ? null : (
-          <button onClick={() => setEditing(true)} className="text-[10.5px] font-semibold text-accent cursor-pointer bg-transparent border-none">Edit</button>
+          <button onClick={() => setEditing(true)} className="text-[11px] font-semibold text-accent cursor-pointer bg-transparent border-none">Edit</button>
         )}
       </div>
       {editing ? (
         <input
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
-          className={'w-full py-[7px] px-2.5 border border-border rounded-lg bg-surface text-fg text-[12.5px] outline-none focus:border-accent ' + (mono ? 'font-mono' : '')}
+          className={'w-full py-[7px] px-2.5 border border-border rounded-lg bg-surface text-fg text-[12px] outline-none focus:border-accent ' + (mono ? 'font-mono' : '')}
         />
       ) : (
-        <div className={'text-[12.5px] px-2.5 py-[7px] rounded-lg bg-surface2 border border-border break-all ' + (mono ? 'font-mono text-[11.5px]' : '') + (present ? '' : ' text-faint')}>
+        <div className={'text-[12px] px-2.5 py-[7px] rounded-lg bg-surface2 border border-border break-all ' + (mono ? 'font-mono text-[12px]' : '') + (present ? '' : ' text-faint')}>
           {present ? (value || '-') : 'mock - seed key in DB to enable'}
         </div>
       )}
@@ -82,23 +82,23 @@ function ConnectionsPage() {
   const has = (k: string) => map.has(k)
 
   const flow = [
-    { title: 'HQ pricing system', sub: 'Head office', icon: <ServerIcon size={19} /> },
-    { title: 'Integrator', sub: 'Map & transform → MNT', icon: <SyncIcon size={19} />, self: true },
-    { title: 'Xcenter inbound', sub: get('xcenter_inbound_path') || 'xcenter-inbound', icon: <FolderIcon size={19} /> },
+    { title: 'HQ pricing system', sub: 'Head office', icon: <ServerIcon size={20} /> },
+    { title: 'Integrator', sub: 'Map & transform → MNT', icon: <SyncIcon size={20} />, self: true },
+    { title: 'Xcenter inbound', sub: get('xcenter_inbound_path') || 'xcenter-inbound', icon: <FolderIcon size={20} /> },
   ]
 
   return (
     <div className="px-7 pt-[26px] pb-11 w-full flex flex-col gap-[22px]">
       <div>
         <h1 className="m-0 text-[21px] font-semibold tracking-tight">Connections</h1>
-        <p className="mt-[5px] text-[13.5px] text-muted">Data flow and connector config owned by this system.</p>
+        <p className="mt-[5px] text-[13px] text-muted">Data flow and connector config owned by this system.</p>
       </div>
 
       {/* Data flow */}
       <section className="bg-surface border border-border rounded-2xl px-6 pt-6 pb-5">
         <div className="flex items-baseline justify-between gap-4 mb-6 flex-wrap">
           <div className="font-semibold text-sm">Data flow</div>
-          <div className="text-[12.5px] text-muted">HQ price event → MNT file in Xcenter inbound</div>
+          <div className="text-[12px] text-muted">HQ price event → MNT file in Xcenter inbound</div>
         </div>
         <div className="flex items-stretch gap-2 overflow-x-auto pt-3 pb-1">
           {flow.map((f, i) => (
@@ -108,28 +108,28 @@ function ConnectionsPage() {
                 (f.self ? 'border-[1.5px] border-accent bg-accent-weak relative' : 'border border-border bg-surface2')
               }>
                 {f.self && (
-                  <span className="absolute -top-2.5 left-3.5 bg-accent text-accent-text text-[9.5px] font-semibold px-2 py-0.5 rounded uppercase tracking-wide">
+                  <span className="absolute -top-2.5 left-3.5 bg-accent text-accent-text text-[10px] font-semibold px-2 py-0.5 rounded uppercase tracking-wide">
                     this system
                   </span>
                 )}
                 <div className={
-                  'w-[38px] h-[38px] rounded-[10px] grid place-items-center ' +
+                  'w-[38px] h-[38px] rounded-lg grid place-items-center ' +
                   (f.self ? 'bg-accent text-accent-text' : 'bg-surface border border-border text-fg')
                 }>
                   {f.icon}
                 </div>
                 <div>
-                  <div className="font-semibold text-[13.5px]">{f.title}</div>
+                  <div className="font-semibold text-[13px]">{f.title}</div>
                   <div className="text-[11px] mt-0.5 break-all text-muted font-mono">{f.sub}</div>
                 </div>
               </div>
               {i < flow.length - 1 && (
-                <div className="text-faint flex-none self-center"><ArrowRightIcon size={18} /></div>
+                <div className="text-faint flex-none self-center"><ArrowRightIcon size={16} /></div>
               )}
             </Fragment>
           ))}
         </div>
-        <div className="mt-4 text-[11.5px] text-faint">
+        <div className="mt-4 text-[12px] text-faint">
           Ends at the Xcenter folder · Xstore delivery is out of scope.
         </div>
       </section>
@@ -139,10 +139,10 @@ function ConnectionsPage() {
       <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
         <div className="bg-surface border border-border rounded-xl p-[18px] flex flex-col gap-3.5">
           <div className="flex items-center gap-2.5">
-            <span className="w-[34px] h-[34px] rounded-[9px] bg-surface2 border border-border grid place-items-center flex-none"><ServerIcon /></span>
+            <span className="w-[34px] h-[34px] rounded-lg bg-surface2 border border-border grid place-items-center flex-none"><ServerIcon /></span>
             <div className="flex-1 min-w-0">
-              <div className="font-semibold text-[13.5px]">HQ intake</div>
-              <div className="text-[11.5px] text-muted">Inbound · JSON price event</div>
+              <div className="font-semibold text-[13px]">HQ intake</div>
+              <div className="text-[12px] text-muted">Inbound · JSON price event</div>
             </div>
           </div>
           <ConfigField label="Endpoint" ck="_endpoint" value="POST /api/v1/price-events" present mono onSaved={load} showToast={showToast} />
@@ -152,10 +152,10 @@ function ConnectionsPage() {
 
         <div className="bg-surface border border-border rounded-xl p-[18px] flex flex-col gap-3.5">
           <div className="flex items-center gap-2.5">
-            <span className="w-[34px] h-[34px] rounded-[9px] bg-surface2 border border-border grid place-items-center flex-none"><FolderIcon /></span>
+            <span className="w-[34px] h-[34px] rounded-lg bg-surface2 border border-border grid place-items-center flex-none"><FolderIcon /></span>
             <div className="flex-1 min-w-0">
-              <div className="font-semibold text-[13.5px]">Xcenter output</div>
-              <div className="text-[11.5px] text-muted">Outbound · MNT file</div>
+              <div className="font-semibold text-[13px]">Xcenter output</div>
+              <div className="text-[12px] text-muted">Outbound · MNT file</div>
             </div>
           </div>
           <ConfigField label="Target folder (xcenter_inbound_path)" ck="xcenter_inbound_path" value={get('xcenter_inbound_path')} present={has('xcenter_inbound_path')} mono onSaved={load} showToast={showToast} />
@@ -167,10 +167,10 @@ function ConnectionsPage() {
 
         <div className="bg-surface border border-border rounded-xl p-[18px] flex flex-col gap-3.5">
           <div className="flex items-center gap-2.5">
-            <span className="w-[34px] h-[34px] rounded-[9px] bg-surface2 border border-border grid place-items-center flex-none"><SyncIcon size={17} /></span>
+            <span className="w-[34px] h-[34px] rounded-lg bg-surface2 border border-border grid place-items-center flex-none"><SyncIcon size={16} /></span>
             <div className="flex-1 min-w-0">
-              <div className="font-semibold text-[13.5px]">Processing</div>
-              <div className="text-[11.5px] text-muted">Business rules</div>
+              <div className="font-semibold text-[13px]">Processing</div>
+              <div className="text-[12px] text-muted">Business rules</div>
             </div>
           </div>
           <ConfigField label="Abort threshold - set-aside ratio (abort_threshold)" ck="abort_threshold" value={get('abort_threshold')} present={has('abort_threshold')} onSaved={load} showToast={showToast} />
@@ -182,25 +182,25 @@ function ConnectionsPage() {
 
       {/* Health strip */}
       <section className="bg-surface border border-border rounded-xl p-[18px] flex flex-col gap-3">
-        <div className="font-semibold text-[13.5px]">Health (live check)</div>
+        <div className="font-semibold text-[13px]">Health (live check)</div>
         <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fit,minmax(200px,1fr))' }}>
           {[
             { name: 'API', ok: !!health?.api },
             { name: 'Database', ok: !!health?.db },
           ].map((h) => (
             <div key={h.name} className="flex items-center gap-2.5 px-3 py-2.5 border border-border rounded-lg bg-surface2">
-              <span className={'w-2.5 h-2.5 rounded-full ' + (h.ok ? 'bg-green' : 'bg-accent')} />
-              <span className="text-[12.5px] font-medium flex-1">{h.name}</span>
-              <span className={'text-[11px] font-semibold ' + (h.ok ? 'text-green' : 'text-accent')}>{h.ok ? 'OK' : 'Down'}</span>
+              <span className={'w-2.5 h-2.5 rounded-full ' + (h.ok ? 'bg-green' : 'bg-danger')} />
+              <span className="text-[12px] font-medium flex-1">{h.name}</span>
+              <span className={'text-[11px] font-semibold ' + (h.ok ? 'text-green' : 'text-danger')}>{h.ok ? 'OK' : 'Down'}</span>
             </div>
           ))}
         </div>
       </section>
 
       {toast && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-fg text-bg px-[18px] py-[11px] rounded-[10px] text-[13px] font-medium flex items-center gap-2 shadow-2xl"
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-fg text-bg px-[18px] py-[11px] rounded-lg text-[13px] font-medium flex items-center gap-2 shadow-2xl"
              style={{ animation: 'toastin .2s ease' }}>
-          <CheckIcon size={15} /> {toast}
+          <CheckIcon size={16} /> {toast}
         </div>
       )}
     </div>

@@ -1,4 +1,4 @@
-package price_sync.intake;
+package price_sync.intake.dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 

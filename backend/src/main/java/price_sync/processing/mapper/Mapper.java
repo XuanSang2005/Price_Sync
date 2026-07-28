@@ -52,14 +52,10 @@ public class Mapper {
         return Optional.of(new MntRow(recordType, columns));
     }
 
-    // Túi field: tên json_field (snake_case) → giá trị đã format sẵn theo kiểu MNT.
-    // Field CỐ ĐỊNH: gọi getter TRỰC TIẾP (rõ ràng, compiler kiểm được, không reflection).
-    // Field ĐỘNG (extras JSONB): trải phẳng ở cuối — HQ khai thêm qua mapping_rule, không cần getter.
-    // Thêm một field cố định mới = thêm 1 dòng put ở đây (đằng nào cũng phải thêm cột DB + getter + DTO).
+
     public Map<String, String> buildFields(PriceRecord record, LocalDate businessDate) {
         Map<String, String> fields = new HashMap<>();
 
-        // formatValue lo: null → "", tiền (BigDecimal) → làm tròn scale 0, ngày (LocalDate) → ISO.
         fields.put("item_id", formatValue(record.getItemId()));
         fields.put("store_id_or_zone", formatValue(record.getStoreIdOrZone()));
         fields.put("price", formatValue(record.getPrice()));
@@ -73,7 +69,6 @@ public class Mapper {
                 ? formatValue(record.getEffectiveStart())
                 : businessDate.plusDays(1).toString());
 
-        // Field ĐỘNG (JSONB extras) — do HQ khai thêm qua mapping_rule
         if (record.getExtras() != null) {
             for (Map.Entry<String, Object> e : record.getExtras().entrySet()) {
                 fields.put(e.getKey(), e.getValue() != null ? String.valueOf(e.getValue()) : "");
@@ -82,8 +77,7 @@ public class Mapper {
         return fields;
     }
 
-    // Format giá trị theo KIỂU (không cần biết tên field): tiền → làm tròn scale 0 (VND), ngày → ISO,
-    // null → chuỗi rỗng (để luật DEFAULT/DIRECT tự xử), còn lại → String.valueOf.
+
     private String formatValue(Object value) {
         if (value == null) {
             return "";
@@ -97,21 +91,17 @@ public class Mapper {
         return String.valueOf(value);
     }
 
-    // Áp một luật → giá trị một cột. Optional.empty() = không map được (đẩy cả record thành unmappable).
     private Optional<String> applyRule(MappingRule rule, Map<String, String> fields) {
         String raw = fields.get(rule.getJsonField());
         switch (rule.getRuleType()) {
             case "DIRECT":
-                // lấy thẳng; field vắng mặt (vd extras không có) → cột rỗng
                 return Optional.of(raw != null ? raw : "");
             case "DEFAULT":
-                // thiếu → điền hằng số rule_value
                 if (raw != null && !raw.isEmpty()) {
                     return Optional.of(raw);
                 }
                 return Optional.of(rule.getRuleValue() != null ? rule.getRuleValue() : "");
             case "VALUE_MAP": {
-                // tra bảng theo prefix (STORE_001 → STORE); không có trong bảng → unmappable
                 if (raw == null) {
                     return Optional.empty();
                 }
@@ -120,7 +110,6 @@ public class Mapper {
                 return mapped != null ? Optional.of(mapped) : Optional.empty();
             }
             case "SPLIT": {
-                // tách phần sau dấu "_" (STORE_001 → 001)
                 if (raw == null) {
                     return Optional.empty();
                 }
@@ -132,7 +121,6 @@ public class Mapper {
         }
     }
 
-    // Parse chuỗi JSON của VALUE_MAP thành Map. Hỏng/null → map rỗng (→ VALUE_MAP thành unmappable).
     private Map<String, String> parseMap(String json) {
         if (json == null) {
             return Map.of();

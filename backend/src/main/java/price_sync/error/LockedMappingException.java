@@ -9,4 +9,9 @@ public class LockedMappingException extends RuntimeException {
     public LockedMappingException() {
         super("standard mapping column is locked (Oracle contract)");
     }
+
+    // Kèm tên cột để console hiện đúng chỗ sai, không chỉ "xung đột".
+    public LockedMappingException(String message) {
+        super(message);
+    }
 }

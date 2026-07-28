@@ -41,10 +41,6 @@ function DashboardPage() {
     return () => clearInterval(t)
   }, [load])
 
-  function retry(id: number) {
-    fetch(`/api/v1/events/${id}/retry`, { method: 'POST' }).then((r) => { if (r.ok) load() })
-  }
-
   const total = Object.values(metrics).reduce((a, b) => a + b, 0)
   const written = metrics.WRITTEN ?? 0
   const partial = metrics.PARTIAL ?? 0
@@ -178,14 +174,6 @@ function DashboardPage() {
                   >
                     View
                   </button>
-                  {e.status === 'FAILED' && (
-                    <button
-                      onClick={() => retry(e.id)}
-                      className="text-[11.5px] font-semibold text-accent-text bg-accent border border-accent px-2.5 py-[5px] rounded-md cursor-pointer hover:brightness-95"
-                    >
-                      Retry
-                    </button>
-                  )}
                 </div>
               </div>
             ))

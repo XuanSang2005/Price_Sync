@@ -1,7 +1,7 @@
 package price_sync.security;
 
 import price_sync.security.filter.ApiKeyFilter;
-import price_sync.security.filter.HmacFIlter;
+import price_sync.security.filter.HmacFilter;
 import price_sync.security.filter.IpAllowListFilter;
 import price_sync.security.filter.TimestampFilter;
 
@@ -36,8 +36,8 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth.anyRequest().permitAll())
                 .addFilterBefore(new ApiKeyFilter(apiKey), UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(new IpAllowListFilter(configRepository), ApiKeyFilter.class)
-                .addFilterBefore(new HmacFIlter(hmacSecret), ApiKeyFilter.class)
-                .addFilterBefore(new TimestampFilter(configRepository), HmacFIlter.class);
+                .addFilterBefore(new HmacFilter(hmacSecret), ApiKeyFilter.class)
+                .addFilterBefore(new TimestampFilter(configRepository), HmacFilter.class);
         return http.build();
     }
 }

@@ -1,5 +1,6 @@
 package price_sync.intake;
 
+import price_sync.intake.dto.IntakeResponse;
 import price_sync.intake.dto.PriceBatchRequest;
 
 import org.springframework.http.ResponseEntity;

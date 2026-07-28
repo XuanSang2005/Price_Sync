@@ -10,5 +10,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 public record MappingMeta(
         @JsonProperty("source_fields") List<String> sourceFields,
         @JsonProperty("record_types") List<String> recordTypes,
-        @JsonProperty("rule_types") List<String> ruleTypes) {
+        @JsonProperty("rule_types") List<String> ruleTypes,
+        // Tên cột MNT dành riêng cho hợp đồng Oracle — UI không cho đặt tên cột tự thêm trùng các tên này.
+        @JsonProperty("standard_columns") List<String> standardColumns) {
 }

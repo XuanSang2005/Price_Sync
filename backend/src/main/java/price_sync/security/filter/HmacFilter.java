@@ -16,11 +16,11 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
-public class HmacFIlter extends OncePerRequestFilter {
+public class HmacFilter extends OncePerRequestFilter {
 
     private final String secret;
 
-    public HmacFIlter(String secret) {
+    public HmacFilter(String secret) {
         this.secret = secret;
     }
 

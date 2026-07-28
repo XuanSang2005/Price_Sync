@@ -1,8 +1,5 @@
-package price_sync.processing;
+package price_sync.processing.mapper;
 
-import price_sync.processing.mapper.Mapper;
-import price_sync.processing.mapper.MntRow;
-import price_sync.processing.mapper.MntRecordType;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
