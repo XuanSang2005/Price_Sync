@@ -1,71 +1,21 @@
+// Trang chi tiết một batch: tiến trình vòng đời, nhật ký, payload gốc, file MNT, danh sách record.
+// Mỗi khối là một component trong components/events/; trang này chỉ nạp dữ liệu và xếp thứ tự.
+
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useState, useEffect, useCallback } from 'react'
-import type { EventDetail, EventLog, EventFile, EventRecord } from '../../types'
-import { StatusPill, RecordPill } from '../../lib/status'
+import type { EventDetail, EventLog, EventFile } from '../../types'
+import { fetchEventDetail, fetchEventLogs, fetchEventFile } from '../../lib/api'
+import { buildSteps } from '../../lib/eventStatus'
+import { StatusPill } from '../../lib/status'
 import { formatTimeDate } from '../../utils/format'
-import { RefreshIcon, CheckIcon, XIcon, AlertIcon, DownloadIcon } from '../../components/icons'
+import { RefreshIcon } from '../../components/icons'
+import { LifecycleStepper } from '../../components/events/LifecycleStepper'
+import { LifecycleLog } from '../../components/events/LifecycleLog'
+import { PayloadPanel } from '../../components/events/PayloadPanel'
+import { MntFilePanel } from '../../components/events/MntFilePanel'
+import { RecordsTable } from '../../components/events/RecordsTable'
 
 export const Route = createFileRoute('/events/$id')({ component: EventDetailPage })
-
-type StepState = 'done' | 'current' | 'error' | 'todo'
-
-// Build the 4 lifecycle steps from real logs + current status.
-function buildSteps(status: string, logStatuses: Set<string>): { label: string; state: StepState }[] {
-  const beyondProcessing = ['WRITING', 'PENDING_WRITE', 'WRITTEN', 'PARTIAL', 'FAILED']
-  const written = status === 'WRITTEN' || status === 'PARTIAL'
-  // FAILED có 2 nguyên nhân: abort ở validation (không log PENDING_WRITE/WRITING) vs hỏng khi ghi file.
-  const failedAtWrite = status === 'FAILED' && (logStatuses.has('PENDING_WRITE') || logStatuses.has('WRITING'))
-  const proc: StepState =
-    (status === 'FAILED' && !failedAtWrite) ? 'error' // abort ở validation → lỗi TẠI Processing
-    : status === 'PROCESSING' ? 'current' // đang xử lý = current, KHÔNG phải done
-    : (beyondProcessing.includes(status) || logStatuses.has('PROCESSING')) ? 'done'
-    : status === 'RECEIVED' ? 'current' : 'todo'
-  const writing: StepState =
-    written ? 'done'
-    : status === 'PENDING_WRITE' ? 'current'
-    : failedAtWrite ? 'error' // chỉ đỏ Writing khi thật sự hỏng ở bước ghi
-    : 'todo' // PROCESSING / FAILED-validation chưa tới Writing → todo
-  const finalLabel = status === 'FAILED' ? 'Failed' : status === 'PARTIAL' ? 'Partial'
-    : status === 'PENDING_WRITE' ? 'Pending' : 'Written'
-  const finalState: StepState =
-    status === 'WRITTEN' ? 'done' : status === 'PARTIAL' ? 'done'
-    : status === 'FAILED' ? 'error' : status === 'PENDING_WRITE' ? 'current' : 'todo'
-  return [
-    { label: 'Received', state: 'done' },
-    { label: 'Processing', state: proc },
-    { label: 'Writing', state: writing },
-    { label: finalLabel, state: finalState },
-  ]
-}
-
-function stepColor(s: StepState) {
-  if (s === 'error') return { text: 'text-accent', bg: 'bg-accent-weak', ring: 'border-transparent' }
-  if (s === 'current') return { text: 'text-muted', bg: 'bg-surface2', ring: 'border-border' }
-  if (s === 'done') return { text: 'text-green', bg: 'bg-green-bg', ring: 'border-transparent' }
-  return { text: 'text-faint', bg: 'bg-surface2', ring: 'border-border' }
-}
-
-// Rebuild the original payload JSON from real records.
-function buildPayload(d: EventDetail): string {
-  const obj = {
-    batch_id: d.batch_id,
-    version: d.version,
-    generated_at: d.generated_at,
-    records: d.records.map((r) => ({
-      change_id: r.change_id,
-      version: r.version,
-      item_id: r.item_id,
-      store_id_or_zone: r.store_id_or_zone,
-      price: r.price,
-      currency: r.currency,
-      effective_start: r.effective_start,
-      effective_end: r.effective_end,
-      change_type: r.change_type,
-      ...(r.extras ?? {}),
-    })),
-  }
-  return JSON.stringify(obj, null, 2)
-}
 
 function EventDetailPage() {
   const { id } = Route.useParams()
@@ -73,39 +23,21 @@ function EventDetailPage() {
   const [detail, setDetail] = useState<EventDetail | null>(null)
   const [logs, setLogs] = useState<EventLog[]>([])
   const [file, setFile] = useState<EventFile | null>(null)
-  const [payloadOpen, setPayloadOpen] = useState(true)
-  const [toast, setToast] = useState('')
 
   const load = useCallback(() => {
-    fetch(`/api/v1/events/${id}`).then((r) => r.json()).then(setDetail).catch(() => {})
-    fetch(`/api/v1/events/${id}/logs`).then((r) => r.json()).then(setLogs).catch(() => {})
-    fetch(`/api/v1/events/${id}/file`).then((r) => r.json()).then(setFile).catch(() => {})
+    fetchEventDetail(id).then(setDetail).catch(() => {})
+    fetchEventLogs(id).then(setLogs).catch(() => {})
+    fetchEventFile(id).then(setFile).catch(() => {})
   }, [id])
 
   useEffect(() => { load() }, [load])
-
-  function showToast(m: string) {
-    setToast(m)
-    setTimeout(() => setToast(''), 2400)
-  }
-
-  function downloadFile() {
-    if (!file?.content || !file.file_name) return
-    const blob = new Blob([file.content], { type: 'text/plain' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = file.file_name
-    a.click()
-    URL.revokeObjectURL(url)
-  }
 
   if (!detail) {
     return <div className="px-7 py-8 text-muted text-sm">Loading…</div>
   }
 
+  // Trạng thái hiện tại cho biết batch đang ở đâu; log cho biết nó ĐÃ ĐI QUA những đâu
   const steps = buildSteps(detail.status, new Set(logs.map((l) => l.status)))
-  const setAside = detail.records.filter((r: EventRecord) => r.validation_status === 'SET_ASIDE')
 
   return (
     <div className="px-7 pt-[26px] pb-11 w-full flex flex-col gap-5">
@@ -136,118 +68,11 @@ function EventDetailPage() {
         </div>
       </div>
 
-      {/* Stepper - mỗi step là 1 ô flex-1 (dot cách đều), đường nối absolute canh đúng tâm chấm */}
-      <div className="bg-surface border border-border rounded-xl px-7 py-6">
-        <div className="flex">
-          {steps.map((s, i) => {
-            const c = stepColor(s.state)
-            return (
-              <div key={i} className="flex-1 flex flex-col items-center relative min-w-0">
-                {i < steps.length - 1 && (
-                  <div className={'absolute top-3 -translate-y-1/2 h-0.5 rounded ' + (s.state === 'done' ? 'bg-green' : 'bg-border')}
-                    style={{ left: 'calc(50% + 13px)', width: 'calc(100% - 26px)' }} />
-                )}
-                <span className={'relative z-10 w-6 h-6 rounded-full grid place-items-center border ' + c.bg + ' ' + c.text + ' ' + c.ring}>
-                  {s.state === 'done' ? <CheckIcon size={12} /> : s.state === 'error' ? <XIcon size={11} /> : s.state === 'current' ? '•' : ''}
-                </span>
-                <span className={'mt-2 text-[10px] font-medium whitespace-nowrap ' + c.text}>{s.label}</span>
-              </div>
-            )
-          })}
-        </div>
-      </div>
-
-      {/* Lifecycle log */}
-      <div className="bg-surface border border-border rounded-xl overflow-hidden">
-        <div className="px-[18px] py-3.5 border-b border-border font-semibold text-[13.5px]">Lifecycle log</div>
-        {logs.length === 0 ? (
-          <div className="px-[18px] py-5 text-[12.5px] text-muted">No log yet.</div>
-        ) : (
-          logs.map((l, i) => (
-            <div key={i} className="flex items-center gap-3 px-[18px] py-2.5 border-b border-border text-[12.5px]">
-              <span className="font-mono text-[11px] text-faint w-[108px] flex-none whitespace-nowrap">{formatTimeDate(l.created_at)}</span>
-              <StatusPill status={l.status} />
-              <span className="text-muted flex-1 min-w-0 truncate">{l.note || '-'}</span>
-            </div>
-          ))
-        )}
-      </div>
-
-      {/* Payload (rebuilt from records) */}
-      <div className="bg-surface border border-border rounded-xl overflow-hidden">
-        <button onClick={() => setPayloadOpen((o) => !o)}
-          className="w-full flex items-center justify-between px-[18px] py-3.5 border-b border-border bg-transparent cursor-pointer">
-          <span className="font-semibold text-[13.5px]">Payload · JSON</span>
-          <span className="text-[11px] text-accent font-semibold">{payloadOpen ? 'Hide' : 'Show'}</span>
-        </button>
-        {payloadOpen && (
-          <pre className="m-0 p-3.5 font-mono text-[11.5px] leading-relaxed text-fg overflow-x-auto whitespace-pre">
-            {buildPayload(detail)}
-          </pre>
-        )}
-      </div>
-
-      {/* Generated MNT file */}
-      <div className="bg-surface border border-border rounded-xl overflow-hidden">
-        <div className="px-[18px] py-3.5 border-b border-border flex items-center justify-between">
-          <span className="font-semibold text-[13.5px]">Generated MNT file</span>
-          {file?.exists && (
-            <button onClick={downloadFile}
-              className="inline-flex items-center gap-1.5 text-[11.5px] font-medium text-fg bg-surface border border-border px-2.5 py-1 rounded-md cursor-pointer hover:bg-surface2">
-              <DownloadIcon size={12} /> Download
-            </button>
-          )}
-        </div>
-        {file?.exists ? (
-          <>
-            <div className="px-[18px] pt-3 font-mono text-[12px] font-medium">{file.file_name}</div>
-            <pre className="m-3.5 mt-2 p-3.5 bg-surface2 border border-border rounded-lg font-mono text-[11.5px] leading-relaxed overflow-x-auto whitespace-pre">
-              {file.content}
-            </pre>
-          </>
-        ) : (
-          <div className="px-[18px] py-4 text-[12.5px] text-amber bg-amber-bg m-3.5 rounded-lg border border-amber">
-            {file?.note ?? 'No file.'}
-          </div>
-        )}
-      </div>
-
-      {/* Records / validation */}
-      <div className="bg-surface border border-border rounded-xl overflow-hidden">
-        <div className="px-[18px] py-3.5 border-b border-border font-semibold text-[13.5px]">
-          Records ({detail.records.length})
-        </div>
-        <div className="overflow-x-auto">
-          <div className="min-w-[640px]">
-            <div className="grid gap-3 px-[18px] py-2 border-b border-border bg-surface2 text-[10.5px] uppercase tracking-[0.05em] text-faint font-semibold"
-                 style={{ gridTemplateColumns: '1.2fr 1fr 1fr 110px 1.4fr' }}>
-              <div>Change ID</div><div>Item</div><div>Store/Zone</div><div>Status</div><div>Reason</div>
-            </div>
-            {detail.records.map((r, i) => (
-              <div key={i} className="grid gap-3 px-[18px] py-2.5 border-b border-border items-center text-[12px] font-mono"
-                   style={{ gridTemplateColumns: '1.2fr 1fr 1fr 110px 1.4fr' }}>
-                <div className="truncate">{r.change_id}</div>
-                <div className="truncate">{r.item_id}</div>
-                <div className="truncate">{r.store_id_or_zone}</div>
-                <div><RecordPill status={r.validation_status} /></div>
-                <div className="truncate text-amber">{r.set_aside_reason || ''}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-        {setAside.length > 0 && (
-          <div className="px-[18px] py-2.5 text-[12px] text-amber flex items-center gap-2 bg-amber-bg border-t border-border">
-            <AlertIcon /> {setAside.length} set aside - excluded from file.
-          </div>
-        )}
-      </div>
-
-      {toast && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-fg text-bg px-[18px] py-[11px] rounded-lg text-[13px] font-medium flex items-center gap-2 shadow-2xl"
-             style={{ animation: 'toastin .2s ease' }}>
-          <CheckIcon size={15} /> {toast}
-        </div>
-      )}
+      <LifecycleStepper steps={steps} />
+      <LifecycleLog logs={logs} />
+      <PayloadPanel detail={detail} />
+      <MntFilePanel file={file} />
+      <RecordsTable records={detail.records} />
     </div>
   )
 }

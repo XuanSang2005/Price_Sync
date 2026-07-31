@@ -46,12 +46,15 @@ public class IntakeService {
             throw new DuplicateBatchException(batch.batchId(), batch.version());
         }
         List<PriceRecord> records = new ArrayList<>();
-        Long parentId = saved.getId();
+        Long parentId = saved.getId(); // phải save batch trước mới gọi được dòng này
         for (PriceRecordRequest record : batch.records()) {
             Map<String, Object> raw = record.extras();
             Map<String, Object> declared = null; 
             if (raw != null) {
                 declared = new HashMap<>();
+            // for (Map.Entry<String, Object> e : raw.entrySet()) { e.getKey(); e.getValue(); } // cần cả 2 → dùng cái này
+            // for (String key : raw.keySet())   { raw.get(key); }   // chỉ cần key
+            // for (Object v : raw.values())     { }                 // chỉ cần value
                 for (Map.Entry<String, Object> e : raw.entrySet()) {
                     if (mappingRuleRepository.existsByJsonField(e.getKey())) {
                         declared.put(e.getKey(), e.getValue()); 

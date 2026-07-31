@@ -1,50 +1,36 @@
-import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { useState, useEffect } from 'react'
+// Trang danh sách batch: lọc theo trạng thái + tìm theo batch_id, làm tươi 5 giây một lần.
+
+import { createFileRoute } from '@tanstack/react-router'
+import { useState, useCallback } from 'react'
 import type { EventSummary } from '../../types'
-import { StatusPill } from '../../lib/status'
-import { formatTimeDate } from '../../utils/format'
+import { fetchEvents } from '../../lib/api'
+import { usePolling } from '../../lib/usePolling'
+import { newestFirst } from '../../lib/eventStatus'
 import { SearchIcon } from '../../components/icons'
+import { FilterTabs } from '../../components/FilterTabs'
+import { EventsTable } from '../../components/events/EventsTable'
 
 export const Route = createFileRoute('/events/')({ component: EventsPage })
 
-// Result text derived from real status (no fabricated numbers).
-function resultText(status: string): string {
-  switch (status) {
-    case 'WRITTEN': return 'Written to Xcenter'
-    case 'PARTIAL': return 'Written, some set aside'
-    case 'FAILED': return 'Failed - see detail'
-    case 'PENDING_WRITE': return 'Retry pending'
-    default: return 'Processing'
-  }
-}
+const REFRESH_MS = 5000
 
 function EventsPage() {
-  const navigate = useNavigate()
   const [events, setEvents] = useState<EventSummary[]>([])
   const [statusFilter, setStatusFilter] = useState('all')
   const [search, setSearch] = useState('')
 
-  useEffect(() => {
-    function load() {
-      fetch('/api/v1/events').then((r) => r.json()).then(setEvents).catch(() => {})
-    }
-    load()
-    const t = setInterval(load, 5000)
-    return () => clearInterval(t)
+  const load = useCallback(() => {
+    fetchEvents().then(setEvents).catch(() => {})
   }, [])
+  usePolling(load, REFRESH_MS)
 
-  const present = [...new Set(events.map((e) => e.status))]
-  const tabs = ['all', ...present]
+  // Chỉ hiện tab của những trạng thái ĐANG CÓ trong dữ liệu (Set = bỏ trùng)
+  const tabs = ['all', ...new Set(events.map((e) => e.status))]
 
-  const q = search.trim().toLowerCase()
-  const rows = [...events]
-    .sort((a, b) => b.id - a.id)
-    .filter((e) => (statusFilter === 'all' || e.status === statusFilter))
-    .filter((e) => !q || e.batch_id.toLowerCase().includes(q))
-
-  const tabClass = (active: boolean) =>
-    'text-[12px] px-3 py-[5px] rounded-md border-none cursor-pointer whitespace-nowrap ' +
-    (active ? 'bg-surface text-fg font-semibold shadow-[var(--shadow)]' : 'bg-transparent text-muted font-medium')
+  const query = search.trim().toLowerCase()
+  const rows = newestFirst(events)
+    .filter((e) => statusFilter === 'all' || e.status === statusFilter)
+    .filter((e) => !query || e.batch_id.toLowerCase().includes(query))
 
   return (
     <div className="px-7 pt-[26px] pb-11 w-full flex flex-col gap-[18px]">
@@ -54,13 +40,7 @@ function EventsPage() {
       </div>
 
       <div className="flex items-center gap-3 flex-wrap">
-        <div className="flex gap-[3px] p-[3px] bg-surface2 border border-border rounded-lg flex-wrap">
-          {tabs.map((t) => (
-            <button key={t} onClick={() => setStatusFilter(t)} className={tabClass(statusFilter === t)}>
-              {t === 'all' ? 'All' : t}
-            </button>
-          ))}
-        </div>
+        <FilterTabs tabs={tabs} active={statusFilter} onChange={setStatusFilter} />
         <div className="relative flex-1 min-w-[200px] max-w-[300px] ml-auto">
           <span className="absolute left-[11px] top-1/2 -translate-y-1/2 text-faint grid place-items-center">
             <SearchIcon />
@@ -74,33 +54,8 @@ function EventsPage() {
         </div>
       </div>
 
-      <div className="bg-surface border border-border rounded-xl overflow-hidden">
-        <div className="overflow-x-auto">
-          <div className="min-w-[720px]">
-            <div className="grid gap-3 px-[18px] py-[11px] border-b border-border bg-surface2 text-[11px] uppercase tracking-[0.05em] text-faint font-semibold"
-                 style={{ gridTemplateColumns: '1.4fr 2fr 0.7fr 1.4fr 1.8fr' }}>
-              <div>Time</div><div>Batch ID</div><div className="text-center">Ver</div><div className="text-center">Status</div><div className="text-right">Result</div>
-            </div>
-            {rows.map((e) => (
-              <div
-                key={e.id}
-                onClick={() => navigate({ to: '/events/$id', params: { id: String(e.id) } })}
-                className="grid gap-3 px-[18px] py-[13px] border-b border-border items-center cursor-pointer hover:bg-surface2"
-                style={{ gridTemplateColumns: '1.4fr 2fr 0.7fr 1.4fr 1.8fr' }}
-              >
-                <div className="font-mono text-[12px] text-muted whitespace-nowrap">{formatTimeDate(e.generated_at)}</div>
-                <div className="font-mono text-[12px] font-medium truncate min-w-0">{e.batch_id}</div>
-                <div className="font-mono text-[12px] text-muted text-center">v{e.version}</div>
-                <div className="flex justify-center"><StatusPill status={e.status} /></div>
-                <div className="text-[12px] text-muted truncate min-w-0 text-right">{resultText(e.status)}</div>
-              </div>
-            ))}
-            {rows.length === 0 && (
-              <div className="px-7 py-7 text-center text-muted text-[13px]">No events match.</div>
-            )}
-          </div>
-        </div>
-      </div>
+      <EventsTable rows={rows} />
+
       <div className="text-[12px] text-faint">
         Showing {rows.length} of {events.length} · status covers this system only (received → Xcenter).
       </div>

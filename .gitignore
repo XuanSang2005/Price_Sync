@@ -38,3 +38,4 @@ xcenter-inbound/
 
 ### Local run script (CHỨA app password Gmail — không commit) ###
 run.sh
+docs/

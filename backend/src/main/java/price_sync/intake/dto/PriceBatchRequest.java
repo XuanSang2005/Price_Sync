@@ -5,6 +5,8 @@ import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
+
+
 public record PriceBatchRequest(
         @JsonProperty("batch_id") String batchId,
         int version,

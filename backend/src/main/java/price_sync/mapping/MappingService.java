@@ -118,6 +118,9 @@ public class MappingService {
         }
     }
 
+    // Số record mẫu lấy cho MỖI record_type trong preview.
+    private static final int SAMPLE_PER_TYPE = 1;
+
     // Preview THẬT: lấy vài record của batch gần nhất có dữ liệu, áp luật hiện tại → before/after.
     @Transactional
     public PreviewResponse preview() {
@@ -131,21 +134,21 @@ public class MappingService {
                 continue;
             }
             LocalDate businessDate = batch.getGeneratedAt().toLocalDate();
-            // Lấy tối đa 3 record MỖI loại (FDETL/FDELE) để tab nào cũng có mẫu preview,
-            // tránh "No sample" oan khi 5 record đầu tình cờ cùng một loại.
+            // Lấy tối đa 1 record MỖI loại (FDETL/FDELE) — preview chỉ cần một ví dụ để soi cột,
+            // nhưng vẫn phải đủ cả hai loại để tab nào cũng có mẫu (tránh "No sample" oan).
             List<PriceRecord> sample = new ArrayList<>();
             int det = 0;
             int del = 0;
             for (PriceRecord r : records) {
                 boolean isDelete = "delete".equalsIgnoreCase(r.getChangeType());
-                if (isDelete && del < 3) {
+                if (isDelete && del < SAMPLE_PER_TYPE) {
                     sample.add(r);
                     del++;
-                } else if (!isDelete && det < 3) {
+                } else if (!isDelete && det < SAMPLE_PER_TYPE) {
                     sample.add(r);
                     det++;
                 }
-                if (det >= 3 && del >= 3) {
+                if (det >= SAMPLE_PER_TYPE && del >= SAMPLE_PER_TYPE) {
                     break;
                 }
             }
