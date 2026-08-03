@@ -1,4 +1,4 @@
-package price_sync.processing.mapper;
+package price_sync.mapping.engine;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -20,12 +20,12 @@ import price_sync.domain.record.ChangeType;
 import price_sync.domain.mapping.MappingRule;
 import price_sync.domain.record.PriceRecord;
 
-// Mapper ĐỌC SỔ (mapping_rule) thay vì hardcode: mỗi record → chọn bộ luật theo record_type
+// MntRowMapper ĐỌC SỔ (mapping_rule) thay vì hardcode: mỗi record → chọn bộ luật theo record_type
 // (delete→FDELE, còn lại→FDETL) → lặp luật theo position → mỗi luật dựng một cột.
-// Mapper vẫn là hàm THUẦN (không tự query DB): danh sách luật do BatchProcessor nạp rồi truyền vào,
-// nhờ vậy test chỉ cần new Mapper() + tự dựng luật.
+// MntRowMapper vẫn là hàm THUẦN (không tự query DB): danh sách luật do BatchProcessor nạp rồi truyền vào,
+// nhờ vậy test chỉ cần new MntRowMapper() + tự dựng luật.
 @Component
-public class Mapper {
+public class MntRowMapper {
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     public Optional<MntRow> map(PriceRecord record, LocalDate businessDate, List<MappingRule> rules) {

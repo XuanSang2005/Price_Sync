@@ -1,6 +1,6 @@
-package price_sync.processing.writer;
+package price_sync.processing.output;
 
-import price_sync.processing.mapper.MntRow;
+import price_sync.mapping.engine.MntRow;
 
 import java.io.IOException;
 import java.nio.file.Path;

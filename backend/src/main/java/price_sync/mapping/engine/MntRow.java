@@ -1,4 +1,4 @@
-package price_sync.processing.mapper;
+package price_sync.mapping.engine;
 
 import java.util.List;
 

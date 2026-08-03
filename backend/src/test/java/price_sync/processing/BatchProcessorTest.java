@@ -1,8 +1,8 @@
 package price_sync.processing;
 
-import price_sync.processing.mapper.Mapper;
-import price_sync.processing.writer.PayloadBuilder;
-import price_sync.processing.writer.OutputWriter;
+import price_sync.mapping.engine.MntRowMapper;
+import price_sync.processing.output.PayloadBuilder;
+import price_sync.processing.output.OutputWriter;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -42,10 +42,10 @@ public class BatchProcessorTest {
     private final AlertService alertService = mock(AlertService.class);
 
     private final BatchProcessor processor = new BatchProcessor(priceRecordRepository, new Validator(),
-            priceBatchRepository, new Mapper(), builder, writer, batchLogRepository, configRepository,
+            priceBatchRepository, new MntRowMapper(), builder, writer, batchLogRepository, configRepository,
             mappingRuleRepository, alertService);
 
-    // Bộ luật chuẩn (FDETL 7 cột + FDELE 3 cột) — Mapper thật cần để dựng cột.
+    // Bộ luật chuẩn (FDETL 7 cột + FDELE 3 cột) — MntRowMapper thật cần để dựng cột.
     private static final String LOC_MAP = "{\"STORE\":\"S\",\"ZONE\":\"Z\"}";
     private static final List<MappingRule> STANDARD_RULES = List.of(
             new MappingRule("FDETL", 1, "item_id", "ITEM", "DIRECT", null),

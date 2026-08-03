@@ -1,9 +1,9 @@
 package price_sync.processing;
 
-import price_sync.processing.mapper.Mapper;
-import price_sync.processing.mapper.MntRow;
-import price_sync.processing.writer.OutputWriter;
-import price_sync.processing.writer.PayloadBuilder;
+import price_sync.mapping.engine.MntRowMapper;
+import price_sync.mapping.engine.MntRow;
+import price_sync.processing.output.OutputWriter;
+import price_sync.processing.output.PayloadBuilder;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -40,7 +40,7 @@ public class BatchProcessor {
     private final PriceRecordRepository priceRecordRepository;
     private final PriceBatchRepository priceBatchRepository;
     private final Validator validator;
-    private final Mapper mapper;
+    private final MntRowMapper mapper;
     private final PayloadBuilder payloadBuilder;
     private final OutputWriter outputWriter;
     private final BatchLogRepository batchLogRepository;
@@ -49,7 +49,7 @@ public class BatchProcessor {
     private final AlertService alertService;
 
     public BatchProcessor(PriceRecordRepository priceRecordRepository, Validator validator,
-            PriceBatchRepository priceBatchRepository, Mapper mapper, PayloadBuilder payloadBuilder,
+            PriceBatchRepository priceBatchRepository, MntRowMapper mapper, PayloadBuilder payloadBuilder,
             OutputWriter outputWriter, BatchLogRepository batchLogRepository, ConfigRepository configRepository,
             MappingRuleRepository mappingRuleRepository, AlertService alertService) {
         this.priceRecordRepository = priceRecordRepository;
@@ -117,7 +117,7 @@ public class BatchProcessor {
             alertService.batchFailed(batch, "abort: " + setAside + "/" + records.size() + " record bi set aside (vuot nguong)");
             return false;
         } else {
-            log.info("Batch {} qua kiem dinh: {} VALID, {} SET_ASIDE - san sang cho Mapper",
+            log.info("Batch {} qua kiem dinh: {} VALID, {} SET_ASIDE - san sang cho MntRowMapper",
                     batchId, valid, setAside);
             return true;
         }

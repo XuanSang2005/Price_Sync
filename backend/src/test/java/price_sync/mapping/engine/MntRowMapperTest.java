@@ -1,4 +1,4 @@
-package price_sync.processing.mapper;
+package price_sync.mapping.engine;
 
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -13,11 +13,11 @@ import org.junit.jupiter.api.Test;
 import price_sync.domain.mapping.MappingRule;
 import price_sync.domain.record.PriceRecord;
 
-public class MapperTest {
-    private final Mapper mapper = new Mapper();
+public class MntRowMapperTest {
+    private final MntRowMapper mapper = new MntRowMapper();
     private final LocalDate bussiLocalDate = LocalDate.of(2026, 7, 15);
 
-    // Bộ luật CHUẨN khớp seed V14+V15 (FDETL 7 cột, FDELE 3 cột) — Mapper giờ đọc luật, test tự cấp.
+    // Bộ luật CHUẨN khớp seed V14+V15 (FDETL 7 cột, FDELE 3 cột) — MntRowMapper giờ đọc luật, test tự cấp.
     private static final String LOC_MAP = "{\"STORE\":\"S\",\"ZONE\":\"Z\"}";
     private final List<MappingRule> rules = List.of(
             new MappingRule("FDETL", 1, "item_id", "ITEM", "DIRECT", null),

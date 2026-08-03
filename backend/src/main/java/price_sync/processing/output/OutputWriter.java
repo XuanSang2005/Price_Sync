@@ -1,4 +1,4 @@
-package price_sync.processing.writer;
+package price_sync.processing.output;
 
 import java.io.IOException;
 import java.nio.file.Path;

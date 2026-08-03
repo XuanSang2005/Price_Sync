@@ -27,18 +27,18 @@ import price_sync.mapping.dto.MappingMeta;
 import price_sync.mapping.dto.MappingResponse;
 import price_sync.mapping.dto.PreviewResponse;
 import price_sync.mapping.dto.PreviewRow;
-import price_sync.processing.mapper.Mapper;
-import price_sync.processing.mapper.MntRow;
+import price_sync.mapping.engine.MntRowMapper;
+import price_sync.mapping.engine.MntRow;
 
 @Service
 public class MappingService {
     private final MappingRuleRepository mappingRuleRepository;
     private final PriceBatchRepository priceBatchRepository;
     private final PriceRecordRepository priceRecordRepository;
-    private final Mapper mapper;
+    private final MntRowMapper mapper;
 
     public MappingService(MappingRuleRepository mappingRuleRepository, PriceBatchRepository priceBatchRepository,
-            PriceRecordRepository priceRecordRepository, Mapper mapper) {
+            PriceRecordRepository priceRecordRepository, MntRowMapper mapper) {
         this.mappingRuleRepository = mappingRuleRepository;
         this.priceBatchRepository = priceBatchRepository;
         this.priceRecordRepository = priceRecordRepository;
@@ -167,7 +167,7 @@ public class MappingService {
     }
 
     // Field nguồn CỐ ĐỊNH — thứ tự TẤT ĐỊNH, khớp cột đích bên phải (thay reflection getMethods() vô định).
-    // Phải KHỚP đúng các field Mapper.buildFields dựng ra (9 field không phải nội bộ).
+    // Phải KHỚP đúng các field MntRowMapper.buildFields dựng ra (9 field không phải nội bộ).
     private static final List<String> FIXED_SOURCE_FIELDS = List.of(
             "item_id", "store_id_or_zone", "price", "currency",
             "effective_start", "effective_end", "change_type", "change_id", "version");
@@ -183,8 +183,8 @@ public class MappingService {
         }
         return new MappingMeta(
                 new ArrayList<>(fields),
-                List.of("FDETL", "FDELE"), // loại record Mapper sinh ra (delete→FDELE, còn lại→FDETL)
-                List.of("DIRECT", "DEFAULT", "VALUE_MAP", "SPLIT"), // khớp Mapper.applyRule
+                List.of("FDETL", "FDELE"), // loại record MntRowMapper sinh ra (delete→FDELE, còn lại→FDETL)
+                List.of("DIRECT", "DEFAULT", "VALUE_MAP", "SPLIT"), // khớp MntRowMapper.applyRule
                 STANDARD_MNT_COLUMNS.stream().sorted().toList()); // tên cột chuẩn — UI chặn đặt trùng
     }
 
