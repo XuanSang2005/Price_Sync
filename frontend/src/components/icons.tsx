@@ -13,6 +13,8 @@ function svg(size: number, className: string | undefined, children: React.ReactN
       strokeLinecap="round"
       strokeLinejoin="round"
       className={className}
+      aria-hidden="true"
+      focusable="false"
     >
       {children}
     </svg>
@@ -26,6 +28,14 @@ export const SyncIcon = ({ size = 18, className }: P) =>
       <polyline points="15 4 19 8 15 12" />
       <polyline points="20 16 5 16" />
       <polyline points="9 12 5 16 9 20" />
+    </>
+  ))
+
+export const PriceTagIcon = ({ size = 18, className }: P) =>
+  svg(size, className, (
+    <>
+      <path d="M20.4 13.7 13.7 20.4a2 2 0 0 1-2.8 0l-7.3-7.3A2 2 0 0 1 3 11.7V5a2 2 0 0 1 2-2h6.7a2 2 0 0 1 1.4.6l7.3 7.3a2 2 0 0 1 0 2.8z" />
+      <circle cx="8" cy="8" r="1.25" />
     </>
   ))
 
@@ -156,6 +166,14 @@ export const SaveIcon = ({ size = 15, className }: P) =>
       <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
       <polyline points="17 21 17 13 7 13 7 21" />
       <polyline points="7 3 7 8 15 8" />
+    </>
+  ))
+
+export const EditIcon = ({ size = 15, className }: P) =>
+  svg(size, className, (
+    <>
+      <path d="M12 20h9" />
+      <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4z" />
     </>
   ))
 

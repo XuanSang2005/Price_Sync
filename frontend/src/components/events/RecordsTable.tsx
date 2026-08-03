@@ -10,9 +10,6 @@ import { AlertIcon, SearchIcon } from '../icons'
 import { Panel } from '../Panel'
 import { FilterTabs } from '../FilterTabs'
 
-// Khai báo cột một lần, dùng cho CẢ hàng tiêu đề lẫn hàng dữ liệu → không bao giờ lệch nhau
-const GRID_COLUMNS = '1.2fr 1fr 1fr 110px 1.4fr'
-
 // Số hàng vẽ ra tối đa sau khi lọc. Lọc/tìm cho hẹp lại là cách xem phần còn lại.
 const ROW_LIMIT = 500
 
@@ -42,12 +39,13 @@ export function RecordsTable({ records }: { records: EventRecord[] }) {
   return (
     <Panel title={`Records (${records.length})`}>
       <div className="flex items-center gap-3 flex-wrap px-[18px] py-2.5 border-b border-border">
-        <FilterTabs tabs={tabs} active={statusFilter} onChange={setStatusFilter} counts={counts} />
+        <FilterTabs tabs={tabs} active={statusFilter} onChange={setStatusFilter} counts={counts} label="Filter records by validation status" />
         <div className="relative flex-1 min-w-[180px] max-w-[280px] ml-auto">
           <span className="absolute left-[11px] top-1/2 -translate-y-1/2 text-faint grid place-items-center">
             <SearchIcon />
           </span>
           <input
+            aria-label="Search records by change ID or item ID"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search change id / item…"
@@ -58,26 +56,34 @@ export function RecordsTable({ records }: { records: EventRecord[] }) {
 
       {/* min-w + overflow-x: màn hẹp thì cuộn ngang thay vì bóp méo cột */}
       <div className="overflow-x-auto">
-        <div className="min-w-[640px]">
-          <div className="grid gap-3 px-[18px] py-2 border-b border-border bg-surface2 text-[10.5px] uppercase tracking-[0.05em] text-faint font-semibold"
-               style={{ gridTemplateColumns: GRID_COLUMNS }}>
-            <div>Change ID</div><div>Item</div><div>Store/Zone</div><div>Status</div><div>Reason</div>
-          </div>
-          {shown.map((r, i) => (
-            <div key={i} className="grid gap-3 px-[18px] py-2.5 border-b border-border items-center text-[12px] font-mono"
-                 style={{ gridTemplateColumns: GRID_COLUMNS }}>
-              <div className="truncate">{r.change_id}</div>
-              <div className="truncate">{r.item_id}</div>
-              <div className="truncate">{r.store_id_or_zone}</div>
-              <div><RecordPill status={r.validation_status} /></div>
-              <div className="truncate text-amber">{r.set_aside_reason || ''}</div>
-            </div>
-          ))}
-
-          {filtered.length === 0 && (
-            <div className="px-7 py-7 text-center text-muted text-[13px]">No records match.</div>
-          )}
-        </div>
+        <table className="w-full min-w-[640px] table-fixed border-collapse text-left">
+          <caption className="sr-only">Records in this price event</caption>
+          <colgroup>
+            <col className="w-[24%]" /><col className="w-[18%]" /><col className="w-[18%]" />
+            <col className="w-[120px]" /><col />
+          </colgroup>
+          <thead className="bg-surface2 text-[10.5px] uppercase tracking-[0.05em] text-faint font-semibold">
+            <tr>
+              {['Change ID', 'Item', 'Store/Zone', 'Status', 'Reason'].map((heading) => (
+                <th key={heading} scope="col" className="px-[18px] py-2 border-b border-border">{heading}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="text-[12px] font-mono">
+            {shown.map((record, index) => (
+              <tr key={`${record.change_id}-${record.version}-${index}`} className="border-b border-border">
+                <td className="px-[18px] py-2.5 truncate">{record.change_id}</td>
+                <td className="px-[18px] py-2.5 truncate">{record.item_id}</td>
+                <td className="px-[18px] py-2.5 truncate">{record.store_id_or_zone}</td>
+                <td className="px-[18px] py-2.5"><RecordPill status={record.validation_status} /></td>
+                <td className="px-[18px] py-2.5 truncate text-amber">{record.set_aside_reason || ''}</td>
+              </tr>
+            ))}
+            {filtered.length === 0 && (
+              <tr><td colSpan={5} className="px-7 py-7 text-center text-muted text-[13px]">No records match.</td></tr>
+            )}
+          </tbody>
+        </table>
       </div>
 
       {/* Nói thẳng khi bảng bị cắt bớt — im lặng cắt sẽ khiến người xem tưởng đã thấy hết */}

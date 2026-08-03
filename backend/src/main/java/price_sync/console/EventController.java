@@ -4,6 +4,10 @@ import price_sync.console.dto.EventSummary;
 import price_sync.console.dto.EventDetail;
 import price_sync.console.dto.EventLog;
 import price_sync.console.dto.EventFile;
+import price_sync.console.dto.EventAttention;
+import price_sync.console.dto.EventDashboard;
+import price_sync.console.dto.EventPage;
+import price_sync.console.dto.EventProgress;
 
 import org.springframework.web.bind.annotation.RestController;
 
@@ -17,6 +21,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 
 @RestController
 public class EventController {
@@ -33,9 +38,35 @@ public class EventController {
         return eventService.getEvents();
     }
 
+    @GetMapping("/api/v1/events/page")
+    public EventPage getEventsPage(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "50") int size,
+            @RequestParam(required = false) BatchStatus status,
+            @RequestParam(defaultValue = "") String search) {
+        int safePage = Math.max(0, page);
+        int safeSize = Math.max(10, Math.min(size, 100));
+        return eventService.getEventsPage(safePage, safeSize, status, search);
+    }
+
+    @GetMapping("/api/v1/events/attention")
+    public EventAttention getAttention(@RequestParam(defaultValue = "6") int limit) {
+        return eventService.getAttention(Math.max(1, Math.min(limit, 20)));
+    }
+
+    @GetMapping("/api/v1/events/dashboard")
+    public EventDashboard getDashboard() {
+        return eventService.getDashboard();
+    }
+
     @GetMapping("/api/v1/events/{id}")
     public EventDetail getEventDetails(@PathVariable Long id) {
         return eventService.getEventDetails(id);
+    }
+
+    @GetMapping("/api/v1/events/{id}/status")
+    public EventProgress getEventProgress(@PathVariable Long id) {
+        return eventService.getEventProgress(id);
     }
 
     @GetMapping("/api/v1/events/metrics")

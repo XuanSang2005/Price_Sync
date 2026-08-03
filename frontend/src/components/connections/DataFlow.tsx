@@ -3,12 +3,27 @@
 import { Fragment } from 'react'
 import { ServerIcon, FolderIcon, SyncIcon, ArrowRightIcon } from '../icons'
 
-export function DataFlow({ xcenterPath, connected }: { xcenterPath: string; connected: boolean }) {
-  // Ô "this system": nối được (API + DB đều sống) thì xanh, ngược lại thì đỏ
-  const selfBox = connected
-    ? 'border-[1.5px] border-green bg-green-bg relative'
-    : 'border-[1.5px] border-accent bg-accent-weak relative'
-  const selfSolid = connected ? 'bg-green text-white' : 'bg-accent text-accent-text'
+export function DataFlow({ xcenterPath, connected, checking = false, unavailable = false }: {
+  xcenterPath: string
+  connected: boolean | null
+  checking?: boolean
+  unavailable?: boolean
+}) {
+  // Keep checking/unavailable distinct from a confirmed healthy or failed state.
+  const selfBox = unavailable
+    ? 'border-[1.5px] border-amber bg-amber-bg relative'
+    : connected === null
+    ? 'border-[1.5px] border-border bg-surface2 relative'
+    : connected
+      ? 'border-[1.5px] border-green bg-green-bg relative'
+      : 'border-[1.5px] border-accent bg-accent-weak relative'
+  const selfSolid = unavailable
+    ? 'bg-surface border border-amber text-amber'
+    : connected === null
+    ? 'bg-surface border border-border text-muted'
+    : connected
+      ? 'bg-green text-white'
+      : 'bg-accent text-accent-text'
 
   const steps = [
     { title: 'HQ pricing system', sub: 'Head office', icon: <ServerIcon size={20} /> },
@@ -17,9 +32,9 @@ export function DataFlow({ xcenterPath, connected }: { xcenterPath: string; conn
   ]
 
   return (
-    <section className="bg-surface border border-border rounded-2xl px-6 pt-6 pb-5">
+    <section aria-labelledby="data-flow-heading" className="bg-surface border border-border rounded-2xl px-6 pt-6 pb-5">
       <div className="flex items-baseline justify-between gap-4 mb-6 flex-wrap">
-        <div className="font-semibold text-sm">Data flow</div>
+        <h2 id="data-flow-heading" className="m-0 font-semibold text-sm">Data flow</h2>
         <div className="text-[12px] text-muted">HQ price event → MNT file in Xcenter inbound</div>
       </div>
 
@@ -31,7 +46,7 @@ export function DataFlow({ xcenterPath, connected }: { xcenterPath: string; conn
               (s.self ? selfBox : 'border border-border bg-surface2')}>
               {s.self && (
                 <span className={'absolute -top-2.5 left-3.5 text-[10px] font-semibold px-2 py-0.5 rounded uppercase tracking-wide ' + selfSolid}>
-                  this system
+                  {unavailable ? 'unavailable' : connected === null ? (checking ? 'checking' : 'unknown') : 'this system'}
                 </span>
               )}
               <div className={'w-[38px] h-[38px] rounded-lg grid place-items-center ' +

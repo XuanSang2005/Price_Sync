@@ -1,4 +1,4 @@
-// Danh sách batch CẦN CHÚ Ý (FAILED / PENDING_WRITE / PARTIAL) — việc operator phải xử lý.
+// Operator queue for FAILED / PENDING_WRITE / PARTIAL batches.
 
 import { useNavigate } from '@tanstack/react-router'
 import type { EventSummary } from '../../types'
@@ -8,34 +8,47 @@ import { Panel } from '../Panel'
 
 const MAX_ROWS = 6
 
-export function AttentionList({ attention }: { attention: EventSummary[] }) {
+export function AttentionList({ attention, totalCount, unavailable = false }: {
+  attention: EventSummary[] | null
+  totalCount?: number
+  unavailable?: boolean
+}) {
   const navigate = useNavigate()
+  const count = totalCount ?? attention?.length ?? 0
 
   return (
     <Panel
-      title={<span className="flex items-center gap-2"><span className="w-[7px] h-[7px] rounded-full bg-accent" />Attention</span>}
-      right={<span className="text-[11px] text-muted">{attention.length} open</span>}
+      title={<span className="flex items-center gap-2"><span aria-hidden="true" className="w-[7px] h-[7px] rounded-full bg-danger" />Attention</span>}
+      right={<span className="text-[11px] text-muted">{attention === null ? (unavailable ? 'Unavailable' : 'Loading') : `${count} open`}</span>}
     >
-      {attention.length === 0 ? (
+      {attention === null ? (
+        <div role={unavailable ? 'alert' : 'status'} className={'px-[18px] py-6 text-[13px] text-center ' + (unavailable ? 'text-danger' : 'text-muted')}>
+          {unavailable ? 'Attention events are unavailable.' : 'Loading attention events…'}
+        </div>
+      ) : attention.length === 0 ? (
         <div className="px-[18px] py-6 text-[13px] text-muted text-center">All clear.</div>
       ) : (
-        attention.slice(0, MAX_ROWS).map((e) => (
-          <div key={e.id} className="flex items-center gap-3 px-[18px] min-h-[52px] border-b border-border text-[12.5px]">
-            <span className="font-mono text-[11px] text-faint w-[116px] flex-none whitespace-nowrap">{formatTimeDate(e.generated_at)}</span>
-            <StatusDot status={e.status} />
-            <div className="flex-1 min-w-0 font-mono text-[11.5px] truncate">
-              {e.batch_id} <span className="text-muted">· {e.status}</span>
-            </div>
-            <div className="flex gap-1.5 flex-none">
+        <ul className="m-0 p-0 list-none">
+          {attention.slice(0, MAX_ROWS).map((event) => (
+            <li key={event.id} className="border-b border-border last:border-b-0">
               <button
-                onClick={() => navigate({ to: '/events/$id', params: { id: String(e.id) } })}
-                className="text-[11.5px] font-medium text-fg bg-surface border border-border px-2.5 py-[5px] rounded-md cursor-pointer hover:bg-surface2"
+                type="button"
+                onClick={() => navigate({ to: '/events/$id', params: { id: String(event.id) } })}
+                className="w-full min-h-[56px] grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 px-4 sm:px-[18px] py-2.5 border-0 bg-transparent text-fg text-left cursor-pointer hover:bg-surface2"
+                aria-label={`View batch ${event.batch_id}, status ${event.status}, ${formatTimeDate(event.generated_at)}`}
               >
-                View
+                <StatusDot status={event.status} />
+                <span className="min-w-0">
+                  <span className="block font-mono text-[11.5px] truncate">{event.batch_id}</span>
+                  <span className="block mt-0.5 font-mono text-[10.5px] text-faint truncate">
+                    {formatTimeDate(event.generated_at)} · <span className="text-muted">{event.status}</span>
+                  </span>
+                </span>
+                <span aria-hidden="true" className="text-[11.5px] font-semibold text-primary">View</span>
               </button>
-            </div>
-          </div>
-        ))
+            </li>
+          ))}
+        </ul>
       )}
     </Panel>
   )

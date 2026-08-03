@@ -3,25 +3,16 @@
 
 import type { MappingRule, MappingMeta, MappingPreview } from '../types'
 
-export function fetchRules(): Promise<MappingRule[]> {
-  return fetch('/api/v1/mappings').then((res) => {
-    if (!res.ok) throw new Error('GET /mappings failed')
-    return res.json()
-  })
+export function fetchRules(signal?: AbortSignal): Promise<MappingRule[]> {
+  return fetchJson<MappingRule[]>('/api/v1/mappings', 'Could not load mapping rules', signal)
 }
 
-export function fetchMeta(): Promise<MappingMeta> {
-  return fetch('/api/v1/mappings/meta').then((res) => {
-    if (!res.ok) throw new Error('GET /mappings/meta failed')
-    return res.json()
-  })
+export function fetchMeta(signal?: AbortSignal): Promise<MappingMeta> {
+  return fetchJson<MappingMeta>('/api/v1/mappings/meta', 'Could not load mapping metadata', signal)
 }
 
-export function fetchPreview(): Promise<MappingPreview> {
-  return fetch('/api/v1/mappings/preview').then((res) => {
-    if (!res.ok) throw new Error('GET /mappings/preview failed')
-    return res.json()
-  })
+export function fetchPreview(signal?: AbortSignal): Promise<MappingPreview> {
+  return fetchJson<MappingPreview>('/api/v1/mappings/preview', 'Could not load mapping preview', signal)
 }
 
 // Một cột gửi lên server khi Save (vị trí = thứ tự trong mảng)
@@ -44,9 +35,30 @@ export function saveMapping(recordType: string, body: SaveColumn[]): Promise<voi
     body: JSON.stringify(body),
   }).then((res) => {
     if (res.ok) return
-    // Đọc body lỗi để lấy message; body không phải JSON thì dùng câu mặc định
-    return res.json()
-      .catch(() => ({}))
-      .then((err) => { throw new Error(err.message ?? 'Save failed') })
+    return responseError(res, 'Could not save mapping').then((error) => { throw error })
   })
+}
+
+async function fetchJson<T>(url: string, fallback: string, signal?: AbortSignal): Promise<T> {
+  const response = await fetch(url, { signal })
+  if (!response.ok) throw await responseError(response, fallback)
+  try {
+    return await response.json() as T
+  } catch {
+    throw new Error(`${fallback}: server returned invalid JSON`)
+  }
+}
+
+async function responseError(response: Response, fallback: string): Promise<Error> {
+  const status = response.status ? ` (${response.status})` : ''
+  try {
+    const body: unknown = await response.json()
+    if (body && typeof body === 'object' && 'message' in body) {
+      const message = (body as { message?: unknown }).message
+      if (typeof message === 'string' && message.trim()) return new Error(message)
+    }
+  } catch {
+    // Body lỗi có thể rỗng hoặc plain text; fallback bên dưới vẫn đủ ngữ cảnh.
+  }
+  return new Error(fallback + status)
 }

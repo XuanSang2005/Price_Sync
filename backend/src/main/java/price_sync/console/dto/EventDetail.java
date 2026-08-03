@@ -14,6 +14,7 @@ public record EventDetail(
         @JsonProperty("status") BatchStatus status,
         @JsonProperty("generated_at") OffsetDateTime generatedAt,
         @JsonProperty("retry_count") int retryCount,
+        @JsonProperty("retryable") boolean retryable,
         @JsonProperty("output_file") String outputFile,
         @JsonProperty("records") List<EventRecord> records) {
 }

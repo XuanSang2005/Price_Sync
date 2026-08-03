@@ -1,109 +1,193 @@
-// Trạng thái "bản nháp cột" của trang mapping: danh sách cột đang chỉnh + mọi thao tác sửa nó.
-// Tách khỏi giao diện để trang chính chỉ còn việc ghép các mảnh lại.
-// Quy ước: MỌI thao tác sửa đều bật cờ `dirty` -> nút Save sáng lên, và bản nháp không bị auto-reload đè.
+// Trạng thái bản nháp của trang Mapping. Mọi thao tác sửa đi qua hook này để:
+// - dirty/revision luôn chính xác;
+// - response Save cũ không thể ghi đè thay đổi mới;
+// - cột vừa xoá có thể khôi phục mà không chạm server.
 
-import { useState, useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { MappingRule } from '../../types'
-import { type Col, colFromRule, newDraftCol } from '../../lib/mappingRules'
+import { type Col, columnsFromRules, newDraftCol } from '../../lib/mappingRules'
 
-// Sau khi vừa đặt nguồn cho một cột, cú click thứ hai của người dùng rất dễ bị hiểu nhầm
-// thành double-click -> gỡ luôn nguồn vừa đặt. Chặn trong khoảng này.
 const UNMAP_GUARD_MS = 350
 
 type Options = {
   rules: MappingRule[]
   recordType: string
-  reservedColumns: Set<string> // tên cột chuẩn -> cột tự thêm không được lấy
-  showToast: (message: string) => void
+  reservedColumns: Set<string>
+  showToast: (message: string, type?: 'success' | 'error' | 'warning') => void
+}
+
+export type RemovedColumn = {
+  column: Col
+  index: number
 }
 
 export function useMappingDraft({ rules, recordType, reservedColumns, showToast }: Options) {
   const [cols, setCols] = useState<Col[]>([])
-  const [dirty, setDirty] = useState(false)
-  const lastMapAtRef = useRef(0) // mốc thời gian vừa map xong
+  const [dirty, setDirtyState] = useState(false)
+  const [revision, setRevision] = useState(0)
+  const [lastRemoved, setLastRemoved] = useState<RemovedColumn | null>(null)
+  const revisionRef = useRef(0)
+  const recordTypeRef = useRef(recordType)
+  const lastMapAtRef = useRef(0)
+  recordTypeRef.current = recordType
 
-  // Khi rules/recordType đổi → dựng lại cột nháp (theo position), giữ nguyên khi đang sửa dở
+  const touch = useCallback(() => {
+    revisionRef.current += 1
+    setRevision(revisionRef.current)
+    setDirtyState(true)
+  }, [])
+
+  // Server refresh chỉ được áp vào editor khi không có draft. Đây là hàng rào cuối
+  // chống polling/reload sau Save nuốt thay đổi đang gõ.
   useEffect(() => {
-    if (dirty) return // đừng đè sửa CHƯA LƯU (đổi tab / auto-reload không nuốt edit); locked lấy từ server r.locked
-    const list = rules
-      .filter((r) => r.record_type === recordType)
-      .sort((a, b) => a.position - b.position)
-      .map(colFromRule)
-    setCols(list)
+    if (dirty) return
+    setCols(columnsFromRules(rules, recordType))
+    setLastRemoved(null)
   }, [rules, recordType, dirty])
 
-  // ===== Gán nguồn vào một cột =====
   function mapSource(colKey: string, sourceField: string) {
-    if (cols.find((c) => c.key === colKey)?.locked) { // cột chuẩn: item_id khoá cứng với ITEM, không cho đổi nguồn
-      showToast('Standard column (Oracle contract) - source is fixed')
+    const column = cols.find((candidate) => candidate.key === colKey)
+    if (!column) return false
+    if (column.locked) {
+      showToast('Standard column (Oracle contract) - source is fixed', 'warning')
       return false
     }
-    setCols((cs) => cs.map((c) => (c.key === colKey ? { ...c, json_field: sourceField } : c)))
-    setDirty(true)
+    if (column.json_field === sourceField) return true
+
+    setCols((current) => current.map((candidate) => (
+      candidate.key === colKey ? { ...candidate, json_field: sourceField } : candidate
+    )))
+    touch()
     lastMapAtRef.current = Date.now()
     return true
   }
 
-  // Gỡ nguồn khỏi cột (bấm nút X) — luôn có hiệu lực ngay
   function clearCol(colKey: string) {
-    setCols((cs) => cs.map((c) => (c.key === colKey ? { ...c, json_field: '' } : c)))
-    setDirty(true)
+    const column = cols.find((candidate) => candidate.key === colKey)
+    if (!column || column.locked || !column.json_field) return false
+    setCols((current) => current.map((candidate) => (
+      // `required` chỉ có nghĩa khi cột đang trỏ tới một source cụ thể.
+      candidate.key === colKey ? { ...candidate, json_field: '', required: false } : candidate
+    )))
+    touch()
+    return true
   }
 
-  // Gỡ nguồn bằng double-click (trên thẻ cột hoặc trên đường nối) — bỏ qua nếu vừa map xong
   function unmapByDoubleClick(colKey: string) {
-    if (Date.now() - lastMapAtRef.current <= UNMAP_GUARD_MS) return
-    clearCol(colKey)
+    if (Date.now() - lastMapAtRef.current <= UNMAP_GUARD_MS) return false
+    return clearCol(colKey)
   }
 
   function removeCol(colKey: string) {
-    setCols((cs) => cs.filter((c) => c.key !== colKey))
-    setDirty(true)
-  }
-
-  // Đổi chỗ cột i với cột liền kề (dir = -1 lên, +1 xuống)
-  function moveCol(i: number, dir: -1 | 1) {
-    setCols((cs) => {
-      const j = i + dir
-      if (j < 0 || j >= cs.length) return cs
-      if (cs[i].locked || cs[j].locked) return cs // không đổi vị trí liên quan cột chuẩn
-      const next = [...cs]
-      ;[next[i], next[j]] = [next[j], next[i]]
-      return next
-    })
-    setDirty(true)
-  }
-
-  // Sửa một vài thuộc tính của cột (rule_type, rule_value, required...)
-  function setColField(colKey: string, patch: Partial<Col>) {
-    setCols((cs) => cs.map((c) => (c.key === colKey ? { ...c, ...patch } : c)))
-    setDirty(true)
-  }
-
-  // Thêm cột mới. Trả về true nếu thêm được (để form bên ngoài tự đóng lại).
-  function addColumn(jsonField: string, mntColumn: string, required: boolean) {
-    const jf = jsonField.trim()
-    if (!jf) { showToast('Enter a JSON field'); return false }
-    const mnt = (mntColumn.trim() || jf.toUpperCase()).replace(/\s+/g, '_')
-    if (cols.some((c) => c.mnt_column === mnt)) { showToast('Column ' + mnt + ' already exists'); return false }
-    // Tên dành riêng cho cột chuẩn: cột chuẩn của tab này đã có sẵn (case trên bắt), nên vào đây
-    // nghĩa là đang lấy tên chuẩn của tab KHÁC (vd PRICE ở FDELE) — server sẽ 409, chặn ngay tại đây.
-    if (reservedColumns.has(mnt)) { showToast(mnt + ' is a standard MNT column - pick another name'); return false }
-    setCols((cs) => [...cs, newDraftCol(jf, mnt, required)])
-    setDirty(true)
+    const index = cols.findIndex((column) => column.key === colKey)
+    if (index < 0 || cols[index].locked) return false
+    setLastRemoved({ column: cols[index], index })
+    setCols((current) => current.filter((column) => column.key !== colKey))
+    touch()
     return true
   }
+
+  function undoRemove() {
+    if (!lastRemoved) return false
+    const removed = lastRemoved
+    setCols((current) => {
+      if (current.some((column) => column.key === removed.column.key)) return current
+      const next = [...current]
+      next.splice(Math.min(removed.index, next.length), 0, removed.column)
+      return next
+    })
+    setLastRemoved(null)
+    touch()
+    return true
+  }
+
+  function moveCol(index: number, direction: -1 | 1) {
+    const destination = index + direction
+    if (index < 0 || destination < 0 || destination >= cols.length) return false
+    if (cols[index].locked || cols[destination].locked) return false
+
+    setCols((current) => {
+      const next = [...current]
+      ;[next[index], next[destination]] = [next[destination], next[index]]
+      return next
+    })
+    touch()
+    return true
+  }
+
+  function setColField(colKey: string, patch: Partial<Col>) {
+    const column = cols.find((candidate) => candidate.key === colKey)
+    if (!column || column.locked) return false
+    const changed = Object.entries(patch).some(([key, value]) => column[key as keyof Col] !== value)
+    if (!changed) return true
+
+    setCols((current) => current.map((candidate) => (
+      candidate.key === colKey ? { ...candidate, ...patch } : candidate
+    )))
+    touch()
+    return true
+  }
+
+  function addColumn(jsonField: string, mntColumn: string, required: boolean) {
+    const source = jsonField.trim().replace(/\s+/g, '_')
+    const target = (mntColumn.trim() || source).replace(/\s+/g, '_').toUpperCase()
+    if (!target) {
+      showToast('Enter an MNT column', 'error')
+      return false
+    }
+
+    if (cols.some((column) => column.mnt_column.toUpperCase() === target)) {
+      showToast(`Column ${target} already exists`, 'error')
+      return false
+    }
+    if (reservedColumns.has(target)) {
+      showToast(`${target} is a standard MNT column - pick another name`, 'error')
+      return false
+    }
+
+    // Source có thể để trống để tạo target trước rồi map bằng click/drag sau.
+    // Draft chưa map vẫn bị validateMapping chặn trước khi Save xuống server.
+    setCols((current) => [...current, newDraftCol(source, target, source ? required : false)])
+    setLastRemoved(null)
+    touch()
+    return true
+  }
+
+  // Bỏ draft khi người dùng đã xác nhận đổi record type.
+  function resetToRules(nextRecordType: string) {
+    revisionRef.current += 1 // vô hiệu mọi snapshot Save cũ còn đang bay
+    setRevision(revisionRef.current)
+    setCols(columnsFromRules(rules, nextRecordType))
+    setLastRemoved(null)
+    setDirtyState(false)
+  }
+
+  // Chỉ nhận bản server nếu người dùng chưa sửa gì kể từ lúc bấm Save.
+  function acceptSavedRules(nextRules: MappingRule[], savedRecordType: string, savedRevision: number) {
+    if (revisionRef.current !== savedRevision || recordTypeRef.current !== savedRecordType) return false
+    setCols(columnsFromRules(nextRules, savedRecordType))
+    setLastRemoved(null)
+    setDirtyState(false)
+    return true
+  }
+
+  const getRevision = useCallback(() => revisionRef.current, [])
 
   return {
     cols,
     dirty,
-    setDirty,
+    revision,
+    lastRemoved,
+    getRevision,
     mapSource,
     clearCol,
     unmapByDoubleClick,
     removeCol,
+    undoRemove,
     moveCol,
     setColField,
     addColumn,
+    resetToRules,
+    acceptSavedRules,
   }
 }

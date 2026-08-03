@@ -11,17 +11,25 @@
   --surface: #ffffff;
   --surface2: #fafafa;
   --fg: #1b1b1f;
-  --muted: #6b7280;
-  --faint: #9aa0a6;
+  --muted: #525866;
+  --faint: #667085;
   --border: #e7e7ea;
   --border2: #d9d9de;
-  --accent: #B4252D;
+  --primary: #9f1d29;
+  --primary-solid: #9f1d29;
+  --accent: var(--primary);
+  --accent-solid: var(--primary-solid);
   --accent-text: #ffffff;
-  --accent-weak: rgba(180, 37, 45, 0.08);
-  --green: #16a34a;
-  --green-bg: rgba(22, 163, 74, 0.10);
-  --amber: #b45309;
-  --amber-bg: rgba(180, 83, 9, 0.10);
+  --accent-weak: rgba(159, 29, 41, 0.09);
+  --danger: #a4261d;
+  --danger-solid: #a4261d;
+  --danger-weak: rgba(164, 38, 29, 0.10);
+  --green: #08783e;
+  --green-solid: #08783e;
+  --green-bg: rgba(8, 120, 62, 0.11);
+  --amber: #854000;
+  --amber-bg: rgba(133, 64, 0, 0.11);
+  --focus: #245ac2;
   --grip: #cdcdd3;
   --sidebar: #ffffff;
   --shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
@@ -33,17 +41,25 @@
   --surface: #161619;
   --surface2: #1e1e22;
   --fg: #f2f2f4;
-  --muted: #9a9aa3;
-  --faint: #67676f;
+  --muted: #b4b4be;
+  --faint: #a0a0ab;
   --border: #2a2a30;
   --border2: #3a3a42;
-  --accent: #ef5350;
+  --primary: #ff9298;
+  --primary-solid: #9f2934;
+  --accent: var(--primary);
+  --accent-solid: var(--primary-solid);
   --accent-text: #ffffff;
-  --accent-weak: rgba(239, 83, 80, 0.16);
-  --green: #3fb950;
-  --green-bg: rgba(63, 185, 80, 0.15);
-  --amber: #d6a02a;
-  --amber-bg: rgba(214, 160, 42, 0.15);
+  --accent-weak: rgba(255, 146, 152, 0.14);
+  --danger: #ffaaa3;
+  --danger-solid: #a9322a;
+  --danger-weak: rgba(255, 170, 163, 0.14);
+  --green: #75dc91;
+  --green-solid: #177541;
+  --green-bg: rgba(117, 220, 145, 0.14);
+  --amber: #f2bd68;
+  --amber-bg: rgba(242, 189, 104, 0.14);
+  --focus: #91b4ff;
   --grip: #3a3a42;
   --sidebar: #121215;
   --shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
@@ -60,13 +76,20 @@
   --color-faint: var(--faint);
   --color-border: var(--border);
   --color-border2: var(--border2);
+  --color-primary: var(--primary);
+  --color-primary-solid: var(--primary-solid);
   --color-accent: var(--accent);
   --color-accent-text: var(--accent-text);
   --color-accent-weak: var(--accent-weak);
+  --color-danger: var(--danger);
+  --color-danger-solid: var(--danger-solid);
+  --color-danger-weak: var(--danger-weak);
   --color-green: var(--green);
+  --color-green-solid: var(--green-solid);
   --color-green-bg: var(--green-bg);
   --color-amber: var(--amber);
   --color-amber-bg: var(--amber-bg);
+  --color-focus: var(--focus);
   --color-sidebar: var(--sidebar);
   --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, monospace;
@@ -92,6 +115,34 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* Text colors in dark mode need to be brighter than solid button/badge colors.
+   These aliases preserve existing bg-accent/bg-green call sites while keeping
+   white text legible on those solid backgrounds. */
+.bg-accent { background-color: var(--accent-solid); }
+.bg-primary { background-color: var(--primary-solid); }
+.bg-danger { background-color: var(--danger-solid); }
+.bg-green { background-color: var(--green-solid); }
+
+@layer base {
+  button,
+  input,
+  select,
+  textarea {
+    font: inherit;
+  }
+}
+
+:where(a, button, input, select, textarea, [tabindex]:not([tabindex="-1"])):focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+
+/* Reusable 44px target for icon-only controls and dense toolbar actions. */
+.touch-target {
+  min-width: 44px;
+  min-height: 44px;
+}
+
 ::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 6px; border: 2px solid var(--bg); }
 ::-webkit-scrollbar-track { background: transparent; }
@@ -100,3 +151,14 @@ body {
 @keyframes fadein { from { opacity: 0; } to { opacity: 1; } }
 @keyframes drawerin { from { transform: translateX(20px); opacity: 0.4; } to { transform: translateX(0); opacity: 1; } }
 @keyframes toastin { from { transform: translateY(12px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

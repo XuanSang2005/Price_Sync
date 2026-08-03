@@ -7,12 +7,19 @@ export type Theme = 'light' | 'dark'
 const KEY = 'price-sync-theme'
 
 function readInitial(): Theme {
-  const saved = localStorage.getItem(KEY)
-  return saved === 'dark' ? 'dark' : 'light' // mặc định sáng, theo mock
+  const applied = document.documentElement.dataset.theme
+  if (applied === 'light' || applied === 'dark') return applied
+  try {
+    const saved = localStorage.getItem(KEY)
+    if (saved === 'light' || saved === 'dark') return saved
+  } catch {
+    // Storage can be unavailable in hardened/private browser contexts.
+  }
+  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
 }
 
 function apply(theme: Theme) {
-  document.documentElement.setAttribute('data-theme', theme)
+  document.documentElement.dataset.theme = theme
 }
 
 export function useTheme() {
@@ -20,7 +27,11 @@ export function useTheme() {
 
   useEffect(() => {
     apply(theme)
-    localStorage.setItem(KEY, theme)
+    try {
+      localStorage.setItem(KEY, theme)
+    } catch {
+      // The selected theme still applies for this session when storage is blocked.
+    }
   }, [theme])
 
   function toggle() {

@@ -186,4 +186,36 @@ public class BatchProcessorTest {
         assertThat(priceBatch.getStatus()).isEqualTo(BatchStatus.PROCESSING);
     }
 
+    @Test
+    public void operator_khong_duoc_retry_validation_failure() {
+        PriceBatch batch = new PriceBatch("validation-failure", 1, OffsetDateTime.now());
+        batch.markFail();
+        when(priceBatchRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(batch));
+
+        assertThat(processor.retry(1L)).isFalse();
+        assertThat(batch.getStatus()).isEqualTo(BatchStatus.FAILED);
+    }
+
+    @Test
+    public void operator_duoc_retry_write_failure_da_het_luot() {
+        PriceBatch batch = new PriceBatch("write-failure", 1, OffsetDateTime.now());
+        batch.markPendingWrite();
+        batch.markPendingWrite();
+        when(priceBatchRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(batch));
+
+        assertThat(processor.retry(1L)).isTrue();
+        assertThat(batch.getStatus()).isEqualTo(BatchStatus.PENDING_WRITE);
+        assertThat(batch.getRetryCount()).isZero();
+    }
+
+    @Test
+    public void markWriting_ghi_nhan_trang_thai_truoc_khi_tao_file() {
+        PriceBatch batch = new PriceBatch("writing", 1, OffsetDateTime.now());
+        when(priceBatchRepository.findById(1L)).thenReturn(Optional.of(batch));
+
+        processor.markWriting(1L);
+
+        assertThat(batch.getStatus()).isEqualTo(BatchStatus.WRITING);
+    }
+
 }

@@ -14,7 +14,7 @@ export type Col = {
   locked: boolean // cột chuẩn (hợp đồng Oracle) — khoá cứng: không đổi nguồn, không xoá. Gắn lúc load, KHÔNG suy từ json_field.
 }
 
-// Toạ độ một đường nối "field nguồn -> cột đích" (tính bằng pixel, so với khung panel)
+// Toạ độ đường nối field nguồn -> cột đích, tương đối với khung hai panel.
 export type Line = { key: string; x1: number; y1: number; x2: number; y2: number }
 
 // Bộ đếm sinh key cho cột MỚI thêm (cột đã lưu thì dùng 'r' + id của DB).
@@ -47,12 +47,48 @@ export function newDraftCol(json_field: string, mnt_column: string, required: bo
   }
 }
 
+// Dựng một snapshot cột theo đúng thứ tự server. Gom ở đây để cả lần tải đầu,
+// đổi record type và xác minh sau Save đều dùng cùng một quy tắc.
+export function columnsFromRules(rules: MappingRule[], recordType: string): Col[] {
+  return rules
+    .filter((rule) => rule.record_type === recordType)
+    .sort((a, b) => a.position - b.position)
+    .map(colFromRule)
+}
+
+// Kiểm tra toàn bộ draft trước khi bulk-replace. Trả về một câu lỗi thân thiện để UI
+// có thể đặt inline lẫn toast; null nghĩa là payload an toàn để gửi.
+export function validateMapping(columns: Col[], allowedRuleTypes: string[]): string | null {
+  const missingSource = columns.find((column) => !column.json_field.trim())
+  if (missingSource) return `Map ${missingSource.mnt_column} to a source field before saving`
+
+  const seenColumns = new Set<string>()
+  for (const column of columns) {
+    const name = column.mnt_column.trim().toUpperCase()
+    if (!name) return 'Every target column needs a name'
+    if (seenColumns.has(name)) return `Target column ${name} is duplicated`
+    seenColumns.add(name)
+
+    if (!allowedRuleTypes.includes(column.rule_type)) {
+      return `Rule type ${column.rule_type} is not supported for ${column.mnt_column}`
+    }
+
+    if (column.rule_type === 'VALUE_MAP' && !isStringMap(column.rule_value)) {
+      return `${column.mnt_column} needs a valid JSON object such as {"STORE":"S"}`
+    }
+  }
+  return null
+}
+
 // Rule engine chạy TRÊN FRONTEND — khớp Mapper.applyRule của backend, áp lên `fields` (đã format sẵn).
 // Nhờ vậy bảng "After" cập nhật LIVE theo cột nháp, không cần Save. null = một luật báo không map được.
 export function computeAfter(fields: Record<string, string>, columns: Col[]): string[] | null {
   const src = fields ?? {} // backend cũ (chưa restart) không có `fields` → tránh crash
   const out: string[] = []
   for (const c of columns) {
+    // Target-only draft được phép tồn tại trong editor, nhưng chưa đủ dữ liệu để
+    // mô phỏng output cho tới khi người dùng map một source.
+    if (!c.json_field.trim()) return null
     const value = applyRule(src[c.json_field], c)
     if (value === null) return null // một cột hỏng -> cả bản ghi không map được
     out.push(value)
@@ -94,8 +130,23 @@ function applyRule(raw: string | undefined, col: Col): string | null {
 function parseValueMap(ruleValue: string | null): Record<string, string> {
   if (!ruleValue) return {}
   try {
-    return JSON.parse(ruleValue)
+    const parsed: unknown = JSON.parse(ruleValue)
+    return isStringMapValue(parsed) ? parsed : {}
   } catch {
     return {}
   }
+}
+
+function isStringMap(ruleValue: string | null): boolean {
+  if (!ruleValue) return false
+  try {
+    return isStringMapValue(JSON.parse(ruleValue))
+  } catch {
+    return false
+  }
+}
+
+function isStringMapValue(value: unknown): value is Record<string, string> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+    && Object.values(value).every((entry) => typeof entry === 'string')
 }

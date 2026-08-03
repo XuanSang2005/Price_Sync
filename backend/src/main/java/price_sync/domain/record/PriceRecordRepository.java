@@ -5,7 +5,7 @@ import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface PriceRecordRepository extends JpaRepository<PriceRecord, Long>{
-    List<PriceRecord>findByBatchId(Long bachId);
+    List<PriceRecord>findByBatchId(Long batchId);
     List<PriceRecord>findByBatchIdAndValidationStatus(Long batchId, RecordStatus status);
 
     boolean existsByBatchIdAndValidationStatus(Long batchId, RecordStatus status);

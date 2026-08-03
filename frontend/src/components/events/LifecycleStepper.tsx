@@ -6,7 +6,7 @@ import { CheckIcon, XIcon } from '../icons'
 
 // Màu của chấm + nhãn theo tình trạng của bước
 function stepColor(state: StepState) {
-  if (state === 'error') return { text: 'text-accent', bg: 'bg-accent-weak', ring: 'border-transparent' }
+  if (state === 'error') return { text: 'text-danger', bg: 'bg-danger-weak', ring: 'border-transparent' }
   if (state === 'current') return { text: 'text-muted', bg: 'bg-surface2', ring: 'border-border' }
   if (state === 'done') return { text: 'text-green', bg: 'bg-green-bg', ring: 'border-transparent' }
   return { text: 'text-faint', bg: 'bg-surface2', ring: 'border-border' }
@@ -22,12 +22,12 @@ function stepMark(state: StepState) {
 
 export function LifecycleStepper({ steps }: { steps: Step[] }) {
   return (
-    <div className="bg-surface border border-border rounded-xl px-7 py-6">
-      <div className="flex">
+    <section aria-label="Event lifecycle" className="bg-surface border border-border rounded-xl px-4 sm:px-7 py-5 overflow-x-auto">
+      <ol className="flex min-w-[420px]">
         {steps.map((s, i) => {
           const color = stepColor(s.state)
           return (
-            <div key={i} className="flex-1 flex flex-col items-center relative min-w-0">
+            <li key={s.label} className="flex-1 flex flex-col items-center relative min-w-0" aria-current={s.state === 'current' ? 'step' : undefined}>
               {/* đường nối sang bước kế tiếp — bước cuối thì không có */}
               {i < steps.length - 1 && (
                 <div className={'absolute top-3 -translate-y-1/2 h-0.5 rounded ' + (s.state === 'done' ? 'bg-green' : 'bg-border')}
@@ -37,11 +37,12 @@ export function LifecycleStepper({ steps }: { steps: Step[] }) {
               <span className={'relative z-10 w-6 h-6 rounded-full grid place-items-center border ' + color.bg + ' ' + color.text + ' ' + color.ring}>
                 {stepMark(s.state)}
               </span>
-              <span className={'mt-2 text-[10px] font-medium whitespace-nowrap ' + color.text}>{s.label}</span>
-            </div>
+              <span className={'mt-2 text-xs font-medium whitespace-nowrap ' + color.text}>{s.label}</span>
+              <span className="sr-only">{s.state}</span>
+            </li>
           )
         })}
-      </div>
-    </div>
+      </ol>
+    </section>
   )
 }

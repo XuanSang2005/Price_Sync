@@ -1,5 +1,5 @@
 // Bảng màu trạng thái, dùng CHUNG mọi trang. Các class là chuỗi TĨNH đầy đủ để Tailwind
-// quét thấy (không ghép động). Màu ánh xạ từ token: green=xong, amber=chờ/một phần, accent(đỏ)=lỗi.
+// quét thấy (không ghép động). Màu ánh xạ từ token: green=xong, amber=chờ/một phần, danger= lỗi.
 type Tone = { text: string; bg: string; dot: string }
 
 const BATCH: Record<string, Tone> = {
@@ -9,7 +9,7 @@ const BATCH: Record<string, Tone> = {
   PENDING_WRITE: { text: 'text-amber', bg: 'bg-amber-bg', dot: 'bg-amber' },
   WRITTEN: { text: 'text-green', bg: 'bg-green-bg', dot: 'bg-green' },
   PARTIAL: { text: 'text-amber', bg: 'bg-amber-bg', dot: 'bg-amber' },
-  FAILED: { text: 'text-accent', bg: 'bg-accent-weak', dot: 'bg-accent' },
+  FAILED: { text: 'text-danger', bg: 'bg-danger-weak', dot: 'bg-danger' },
 }
 const FALLBACK: Tone = { text: 'text-muted', bg: 'bg-surface2', dot: 'bg-faint' }
 
@@ -27,7 +27,7 @@ export function StatusPill({ status }: { status: string }) {
         t.text + ' ' + t.bg
       }
     >
-      <span className={'w-1.5 h-1.5 rounded-full ' + t.dot} />
+      <span aria-hidden="true" className={'w-1.5 h-1.5 rounded-full ' + t.dot} />
       {status}
     </span>
   )
@@ -36,7 +36,7 @@ export function StatusPill({ status }: { status: string }) {
 // Chỉ chấm màu (không chữ) - cho danh sách gọn
 export function StatusDot({ status }: { status: string }) {
   const t = batchTone(status)
-  return <span className={'w-[7px] h-[7px] rounded-full shrink-0 ' + t.dot} />
+  return <span aria-hidden="true" className={'w-[7px] h-[7px] rounded-full shrink-0 ' + t.dot} />
 }
 
 // Trạng thái từng record (VALID/SET_ASIDE/SUPERSEDED/PENDING)

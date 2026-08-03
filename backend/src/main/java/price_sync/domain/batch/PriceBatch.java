@@ -100,6 +100,10 @@ public class PriceBatch {
     public void markWritten() {
         status = BatchStatus.WRITTEN;
     }
+
+    public void markWriting() {
+        status = BatchStatus.WRITING;
+    }
     public void markPartial(){
         status = BatchStatus.PARTIAL;
     }
@@ -115,6 +119,15 @@ public class PriceBatch {
 
     public int getRetryCount(){
         return this.retryCount;
+    }
+
+    /**
+     * Only failures caused by exhausting file-write attempts can be re-driven.
+     * Validation failures must go through validation again and are intentionally
+     * excluded from the operator retry action.
+     */
+    public boolean isWriteRetryable() {
+        return status == BatchStatus.FAILED && retryCount >= MAX_ATTEMPTS;
     }
 
     public void redrive(){

@@ -5,8 +5,12 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
-    "lint": "eslint .",
+    "build": "npm run typecheck && vite build",
+    "typecheck": "tsc -b --pretty false",
+    "lint": "npm run typecheck && oxlint src --react-plugin --jsx-a11y-plugin --vitest-plugin -D correctness -D suspicious -A react/react-in-jsx-scope -A unicorn/no-array-sort -A unicorn/no-useless-fallback-in-spread -A jsx-a11y/prefer-tag-over-role --deny-warnings",
+    "test": "vitest run && npm run test:mapping",
+    "test:watch": "vitest",
+    "test:mapping": "node --test tests/mappingRules.test.ts",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -19,6 +23,9 @@
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@tanstack/router-plugin": "^1.168.22",
+    "@testing-library/jest-dom": "^7.0.0",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
     "@types/node": "^26.1.1",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
@@ -27,7 +34,10 @@
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.3",
     "globals": "^17.7.0",
+    "jsdom": "^30.0.1",
+    "oxlint": "^1.76.0",
     "typescript": "^7.0.2",
-    "vite": "^8.1.1"
+    "vite": "^8.1.1",
+    "vitest": "^4.1.10"
   }
 }

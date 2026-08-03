@@ -38,6 +38,7 @@ public class WorkDispatcher {
         PriceBatch batch = optionalBatch.get();
         log.info("Da nhan batch id={}, batch_id={}, owner={}", batch.getId(), batch.getBatchId(), instanceId);
         if (batchProcessor.validateBatch(batch.getId())) {
+            batchProcessor.markWriting(batch.getId());
             try {
                 batchProcessor.mapBatch(batch.getId());
             } catch (IOException e) {
@@ -63,8 +64,9 @@ public class WorkDispatcher {
             return;
         PriceBatch batch = optionalBatch.get();
         log.info("Retry batch id={}", batch.getId());
+        batchProcessor.markWriting(batch.getId());
         try {
-            batchProcessor.mapBatch(batch.getId()); 
+            batchProcessor.mapBatch(batch.getId());
         } catch (IOException e) {
             log.error("Retry ghi loi, batch {} ve PENDING_WRITE", batch.getId(), e);
             batchProcessor.markPendingWrite(batch.getId());

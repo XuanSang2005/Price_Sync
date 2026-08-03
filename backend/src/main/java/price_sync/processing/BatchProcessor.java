@@ -92,7 +92,7 @@ public class BatchProcessor {
     @Transactional
     public boolean validateBatch(@NonNull Long batchId) {
         int valid = 0, setAside = 0;
-        PriceBatch batch = priceBatchRepository.findById(batchId).get();
+        PriceBatch batch = priceBatchRepository.findById(batchId).orElseThrow(InvalidIdException::new);
 
         List<PriceRecord> records = priceRecordRepository.findByBatchId(batchId);
         List<MappingRule> rules = mappingRuleRepository.findAll();
@@ -125,7 +125,7 @@ public class BatchProcessor {
 
     @Transactional
     public void mapBatch(@NonNull Long batchId) throws IOException {
-        PriceBatch batch = priceBatchRepository.findById(batchId).get();
+        PriceBatch batch = priceBatchRepository.findById(batchId).orElseThrow(InvalidIdException::new);
         LocalDate businessDate = batch.getGeneratedAt().toLocalDate();
         List<MntRow> rows = new ArrayList<>();
         List<PriceRecord> records = priceRecordRepository.findByBatchIdAndValidationStatus(batchId, RecordStatus.VALID);
@@ -167,21 +167,28 @@ public class BatchProcessor {
     }
 
     @Transactional
-    public void markPendingWrite(@NonNull Long bachtId) {
-        PriceBatch batch = priceBatchRepository.findById(bachtId).get();
+    public void markWriting(@NonNull Long batchId) {
+        PriceBatch batch = priceBatchRepository.findById(batchId).orElseThrow(InvalidIdException::new);
+        batch.markWriting();
+        recordLog(batch.getId(), batch.getStatus(), null);
+    }
+
+    @Transactional
+    public void markPendingWrite(@NonNull Long batchId) {
+        PriceBatch batch = priceBatchRepository.findById(batchId).orElseThrow(InvalidIdException::new);
         batch.markPendingWrite();
         recordLog(batch.getId(), batch.getStatus(), "write fail, retry " + batch.getRetryCount());
         if (batch.getStatus() == BatchStatus.FAILED) {
-            log.error("CHUONG: Batch {} FAILED sau {} lan ghi that bai - can nguoi xu ly", bachtId,
+            log.error("CHUONG: Batch {} FAILED sau {} lan ghi that bai - can nguoi xu ly", batchId,
                     batch.getRetryCount());
             alertService.batchFailed(batch, "can " + batch.getRetryCount() + " lan retry ghi file");
         }
     }
 
     @Transactional
-    public boolean retry(Long bacthId) {
-        PriceBatch batch = priceBatchRepository.findById(bacthId).orElseThrow(InvalidIdException::new);
-        if (batch.getStatus() == BatchStatus.FAILED) {
+    public boolean retry(Long batchId) {
+        PriceBatch batch = priceBatchRepository.findByIdForUpdate(batchId).orElseThrow(InvalidIdException::new);
+        if (batch.isWriteRetryable()) {
             batch.redrive();
             recordLog(batch.getId(), batch.getStatus(), "operator re-drive");
             return true;

@@ -24,8 +24,11 @@ export function PreviewSection({ rows, cols, recordType }: {
     )
   }
 
-  const afterHeaders = cols.map((c) => c.mnt_column)
-  const computedRows = rows.map((r) => ({ row: r, after: computeAfter(r.fields, cols) }))
+  // Target chưa chọn JSON source vẫn được giữ trong draft, nhưng chưa phải một cột
+  // có thể preview. Chỉ bỏ cột đó; tuyệt đối không bỏ cả record mẫu.
+  const previewCols = cols.filter((column) => column.json_field.trim())
+  const afterHeaders = previewCols.map((column) => column.mnt_column)
+  const computedRows = rows.map((row) => ({ row, after: computeAfter(row.fields, previewCols) }))
 
   // Bảng After dựng MỘT LẦN, dùng cho cả hai trạng thái — chỉ khác chỗ có nhãn hay không.
   // Thu gọn: title = undefined → PreviewTable bỏ luôn hàng nhãn, tiết kiệm ~24px.
@@ -33,7 +36,6 @@ export function PreviewSection({ rows, cols, recordType }: {
     <PreviewTable green
       title={open ? 'After - MNT columns (this becomes the file)' : undefined}
       headers={['RECORD_TYPE', ...afterHeaders]}
-      // after = null nghĩa là bản ghi không map được → hiện một hàng toàn dấu '-'
       rows={computedRows.map(({ row, after }) => [row.record_type, ...(after ?? Array(afterHeaders.length).fill('-'))])}
       notes={computedRows.map(({ after }) => (after === null ? 'unmappable - unknown prefix or missing field' : null))}
       // Khi mở, nút thu nằm ngay hàng nhãn của bảng After
@@ -47,10 +49,10 @@ export function PreviewSection({ rows, cols, recordType }: {
         // max-h: mở cả 2 bảng cũng không bao giờ ăn hết màn hình
         <div className="flex flex-col gap-2 max-h-[42vh] overflow-y-auto">
           <PreviewTable title="Before - source feeding each column" green={false}
-            headers={['change_type', ...cols.map((c) => c.json_field || '(none)')]}
-            rows={rows.map((r) => [
-              r.before?.change_type ?? r.fields?.change_type ?? '',
-              ...cols.map((c) => r.before?.[c.json_field] ?? r.fields?.[c.json_field] ?? ''),
+            headers={['change_type', ...previewCols.map((column) => column.json_field)]}
+            rows={rows.map((row) => [
+              row.before?.change_type ?? row.fields?.change_type ?? '',
+              ...previewCols.map((column) => row.before?.[column.json_field] ?? row.fields?.[column.json_field] ?? ''),
             ])} />
 
           <div className="flex items-center justify-center gap-2 text-accent text-[12px] font-semibold">
@@ -78,13 +80,15 @@ function ToggleButton({ open, onClick }: { open: boolean; onClick: () => void })
     'border border-border rounded-lg bg-surface cursor-pointer hover:text-fg hover:border-border2'
   if (open) {
     return (
-      <button onClick={onClick} title="Hide the before table" className={shared + ' px-2.5 py-1.5'}>
+      <button type="button" onClick={onClick} title="Hide the before table" aria-expanded={true}
+        className={shared + ' px-2.5 py-1.5'}>
         Hide before <ChevronDownIcon size={12} />
       </button>
     )
   }
   return (
-    <button onClick={onClick} title="Show the before table" className={shared + ' flex-none w-7 h-7'}>
+    <button type="button" onClick={onClick} title="Show the before table" aria-expanded={false}
+      className={shared + ' flex-none w-8 h-8'}>
       <ChevronUpIcon size={12} />
     </button>
   )
@@ -118,12 +122,12 @@ function PreviewTable({ title, headers, rows, green, notes, action }: {
               </tr>
             </thead>
             <tbody>
-              {rows.map((row, ri) => (
-                <tr key={ri}>
+              {rows.map((row, rowIndex) => (
+                <tr key={rowIndex}>
                   {row.map((v, ci) => (
                     <td key={ci} className={'px-3 py-2 font-mono text-[12px] whitespace-nowrap border-b border-border ' +
                       (green && ci === 0 ? 'bg-accent-weak text-accent font-medium ' : '') + (v === '-' || v === '' ? 'text-faint' : '')}>
-                      {v === '' ? '-' : v}{green && ci === row.length - 1 && notes?.[ri] ? <span className="text-amber"> · {notes[ri]}</span> : null}
+                      {v === '' ? '-' : v}{green && ci === row.length - 1 && notes?.[rowIndex] ? <span className="text-amber"> · {notes[rowIndex]}</span> : null}
                     </td>
                   ))}
                 </tr>

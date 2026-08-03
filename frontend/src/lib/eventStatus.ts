@@ -1,22 +1,7 @@
 // Ý NGHĨA của các trạng thái batch (không phải màu sắc — màu nằm ở lib/status.tsx).
 // Gom về một chỗ để dashboard, sidebar và trang chi tiết luôn hiểu giống nhau.
 
-import type { EventSummary, EventDetail } from '../types'
-
-// Các trạng thái operator cần để mắt (badge chuông + mục "Attention" ở dashboard)
-export const ATTENTION_STATUSES = ['FAILED', 'PENDING_WRITE', 'PARTIAL']
-
-// Lọc ra các batch cần chú ý, mới nhất lên đầu
-export function attentionEvents(events: EventSummary[]): EventSummary[] {
-  return [...events]
-    .filter((e) => ATTENTION_STATUSES.includes(e.status))
-    .sort((a, b) => b.id - a.id)
-}
-
-// Sắp xếp mới nhất lên đầu (id tăng dần theo thời gian nhận batch)
-export function newestFirst(events: EventSummary[]): EventSummary[] {
-  return [...events].sort((a, b) => b.id - a.id)
-}
+import type { EventDetail } from '../types'
 
 // Câu mô tả kết quả cho bảng Events — suy từ trạng thái THẬT, không bịa số liệu
 export function resultText(status: string): string {
@@ -44,11 +29,11 @@ export function buildSteps(status: string, logStatuses: Set<string>): Step[] {
     (status === 'FAILED' && !failedAtWrite) ? 'error' // abort ở validation → lỗi TẠI Processing
     : status === 'PROCESSING' ? 'current' // đang xử lý = current, KHÔNG phải done
     : (beyondProcessing.includes(status) || logStatuses.has('PROCESSING')) ? 'done'
-    : status === 'RECEIVED' ? 'current' : 'todo'
+    : 'todo'
 
   const writing: StepState =
     written ? 'done'
-    : status === 'PENDING_WRITE' ? 'current'
+    : (status === 'WRITING' || status === 'PENDING_WRITE') ? 'current'
     : failedAtWrite ? 'error' // chỉ đỏ Writing khi thật sự hỏng ở bước ghi
     : 'todo' // PROCESSING / FAILED-validation chưa tới Writing → todo
 

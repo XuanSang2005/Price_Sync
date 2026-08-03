@@ -8,6 +8,32 @@ export type EventSummary = {
   generated_at: string
 }
 
+export type EventPage = {
+  items: EventSummary[]
+  page: number
+  size: number
+  total_items: number
+  total_pages: number
+}
+
+export type EventAttention = {
+  count: number
+  events: EventSummary[]
+}
+
+export type EventHourBucket = {
+  hour: string
+  event_count: number
+}
+
+export type EventDashboard = {
+  metrics: Record<string, number>
+  recent_events: EventSummary[]
+  attention_count: number
+  attention_events: EventSummary[]
+  hourly_events: EventHourBucket[]
+}
+
 export type EventRecord = {
   change_id: string
   version: number
@@ -30,9 +56,12 @@ export type EventDetail = {
   status: string
   generated_at: string
   retry_count: number
+  retryable: boolean
   output_file: string | null
   records: EventRecord[]
 }
+
+export type EventProgress = Pick<EventDetail, 'id' | 'status' | 'retry_count' | 'retryable' | 'output_file'>
 
 // Một dòng nhật ký vòng đời batch (GET /api/v1/events/{id}/logs)
 export type EventLog = {

@@ -45,7 +45,7 @@ public class MappingService {
         this.mapper = mapper;
     }
 
-    @Transactional
+    @Transactional(readOnly = true)
     public List<MappingResponse> getAll() {
         return mappingRuleRepository.findAll().stream()
                 .sorted(Comparator.comparing(MappingRule::getRecordType).thenComparingInt(MappingRule::getPosition))
@@ -122,17 +122,13 @@ public class MappingService {
     private static final int SAMPLE_PER_TYPE = 1;
 
     // Preview THẬT: lấy vài record của batch gần nhất có dữ liệu, áp luật hiện tại → before/after.
-    @Transactional
+    @Transactional(readOnly = true)
     public PreviewResponse preview() {
         List<MappingRule> rules = mappingRuleRepository.findAll();
-        List<PriceBatch> batches = new ArrayList<>(priceBatchRepository.findAll());
-        batches.sort(Comparator.comparingLong(PriceBatch::getId).reversed());
-
-        for (PriceBatch batch : batches) {
+        Optional<PriceBatch> latestBatch = priceBatchRepository.findLatestWithRecords();
+        if (latestBatch.isPresent()) {
+            PriceBatch batch = latestBatch.get();
             List<PriceRecord> records = priceRecordRepository.findByBatchId(batch.getId());
-            if (records.isEmpty()) {
-                continue;
-            }
             LocalDate businessDate = batch.getGeneratedAt().toLocalDate();
             // Lấy tối đa 1 record MỖI loại (FDETL/FDELE) — preview chỉ cần một ví dụ để soi cột,
             // nhưng vẫn phải đủ cả hai loại để tab nào cũng có mẫu (tránh "No sample" oan).
@@ -178,7 +174,7 @@ public class MappingService {
 
     // Metadata cho UI: source_fields = field cố định (thứ tự trên) + field ĐỘNG đã khai trong sổ (promo_code…);
     // record/rule/standard/data types là hằng single-source ở backend (không để FE hardcode).
-    @Transactional
+    @Transactional(readOnly = true)
     public MappingMeta meta() {
         Set<String> fields = new LinkedHashSet<>(FIXED_SOURCE_FIELDS);
         // Nối field ĐỘNG (extras như promo_code) khai trong sổ; LinkedHashSet giữ thứ tự + tự dedup.
