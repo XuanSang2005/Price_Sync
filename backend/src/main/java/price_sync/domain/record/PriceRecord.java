@@ -109,20 +109,12 @@ public class PriceRecord {
         return changeType;
     }
 
-    public Long getId() {
-        return id;
-    }
-
     public String getItemId() {
         return itemId;
     }
 
     public String getStoreIdOrZone() {
         return storeIdOrZone;
-    }
-
-    public Long getBatchId() {
-        return batchId;
     }
 
     public RecordStatus getValidationStatus() {

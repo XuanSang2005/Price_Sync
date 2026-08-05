@@ -78,19 +78,10 @@ public class PriceBatch {
         return generatedAt;
     }
 
-    public String getOwnerInstance() {
-        return ownerInstance;
-    }
-
-    public OffsetDateTime getClaimedAt() {
-        return claimedAt;
-    }
-
-    public BatchStatus markProcessing(String owner) {
+    public void markProcessing(String owner) {
         status = BatchStatus.PROCESSING;
         ownerInstance = owner;
         claimedAt = OffsetDateTime.now();
-        return status;
     }
 
     public void markFail() {
@@ -112,7 +103,6 @@ public class PriceBatch {
         return outputFile;
     }
 
-    // Ghi tên file MNT vừa tạo (dirty-checking tự UPDATE — không cần save()).
     public void recordOutputFile(String fileName) {
         this.outputFile = fileName;
     }

@@ -1,6 +1,5 @@
 package price_sync.console;
 
-import price_sync.console.dto.EventSummary;
 import price_sync.console.dto.EventDetail;
 import price_sync.console.dto.EventLog;
 import price_sync.console.dto.EventFile;
@@ -15,7 +14,6 @@ import price_sync.domain.batch.BatchStatus;
 import price_sync.processing.BatchProcessor;
 
 import java.util.List;
-import java.util.Map;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -33,11 +31,7 @@ public class EventController {
         this.batchProcessor = batchProcessor;
     }
 
-    @GetMapping("/api/v1/events")
-    public List<EventSummary> getEvents() {
-        return eventService.getEvents();
-    }
-
+    // Trang /events: hien danh sach batch, phan trang, loc status va tim batch_id.
     @GetMapping("/api/v1/events/page")
     public EventPage getEventsPage(
             @RequestParam(defaultValue = "0") int page,
@@ -49,48 +43,49 @@ public class EventController {
         return eventService.getEventsPage(safePage, safeSize, status, search);
     }
 
+    // Header va sidebar: hien tong so va cac batch moi nhat trong muc Can chu y.
     @GetMapping("/api/v1/events/attention")
     public EventAttention getAttention(@RequestParam(defaultValue = "6") int limit) {
         return eventService.getAttention(Math.max(1, Math.min(limit, 20)));
     }
 
+    // Trang /dashboard: gom metrics, recent, attention va bieu do theo gio.
     @GetMapping("/api/v1/events/dashboard")
     public EventDashboard getDashboard() {
         return eventService.getDashboard();
     }
 
+    // Trang /events/{id}: tai thong tin batch va danh sach record luc mo trang.
     @GetMapping("/api/v1/events/{id}")
     public EventDetail getEventDetails(@PathVariable Long id) {
         return eventService.getEventDetails(id);
     }
 
+    // Trang /events/{id}: poll trang thai ngan gon khi batch dang duoc xu ly.
     @GetMapping("/api/v1/events/{id}/status")
     public EventProgress getEventProgress(@PathVariable Long id) {
         return eventService.getEventProgress(id);
     }
 
-    @GetMapping("/api/v1/events/metrics")
-    public Map<BatchStatus, Long> getMetrics() {
-        return eventService.getMetrics();
-    }
-
+    // Trang /events/{id}: hien timeline RECEIVED, PROCESSING, WRITING va ket qua.
     @GetMapping("/api/v1/events/{id}/logs")
     public List<EventLog> getLogs(@PathVariable Long id) {
         return eventService.getLogs(id);
     }
 
-    // Nội dung file MNT thật đã ghi ra cho batch
+    // Trang /events/{id}: doc va hien noi dung file MNT that da ghi cho batch.
     @GetMapping("/api/v1/events/{id}/file")
     public EventFile getFile(@PathVariable Long id) {
         return eventService.getFile(id);
     }
 
+    // Trang /events/{id}: nut Retry dua write-failure FAILED ve PENDING_WRITE.
     @PostMapping("/api/v1/events/{id}/retry")
     public ResponseEntity<String> retry(@PathVariable Long id) {
         if (batchProcessor.retry(id)) {
-            return ResponseEntity.accepted().body("Receive"); // 202 nếu FAILED → redrive
+            return ResponseEntity.accepted().body("Receive"); // 202 neu FAILED duoc redrive
         }
-        return ResponseEntity.ok("Done"); // 200 nếu không
+        return ResponseEntity.ok("Done"); // 200 neu batch khong du dieu kien
     }
 
 }

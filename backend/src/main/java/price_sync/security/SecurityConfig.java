@@ -29,7 +29,7 @@ public class SecurityConfig {
         this.configRepository = configRepository;
     }
 
-    @Bean
+    @Bean //dung Bean tai vi class SecurityFilterChain ko phai tu viet
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http.csrf(csrf -> csrf.disable())
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))

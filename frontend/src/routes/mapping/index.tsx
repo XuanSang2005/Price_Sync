@@ -242,9 +242,7 @@ function MappingPage() {
 
     const savedRecordType = recordType
     const savedRevision = draft.getRevision()
-    const body: SaveColumn[] = cols.map((column, index) => ({
-      record_type: savedRecordType,
-      position: index + 1,
+    const body: SaveColumn[] = cols.map((column) => ({
       json_field: column.json_field.trim(),
       mnt_column: column.mnt_column.trim(),
       rule_type: column.rule_type,

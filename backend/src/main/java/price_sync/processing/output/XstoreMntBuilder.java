@@ -22,8 +22,7 @@ public class XstoreMntBuilder implements PayloadBuilder {
             writer.newLine();
             for (MntRow row : rows) {
                 count++;
-                // Escape RFC-4180 TỪNG ô trước khi ghép, để giá trị "bẩn" (có dấu phẩy / xuống dòng)
-                // không bẻ gãy cột hay tách record của các dòng khác.
+
                 String line = row.recordType() + ","
                         + row.columns().stream().map(this::escape).collect(Collectors.joining(","));
                 writer.write(line);

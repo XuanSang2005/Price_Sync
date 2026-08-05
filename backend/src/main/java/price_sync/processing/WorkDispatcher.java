@@ -12,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import price_sync.domain.batch.PriceBatch;
 import price_sync.domain.batch.PriceBatchRepository;
+import price_sync.error.MappingConfigurationException;
 
 @Component
 public class WorkDispatcher {
@@ -41,6 +42,10 @@ public class WorkDispatcher {
             batchProcessor.markWriting(batch.getId());
             try {
                 batchProcessor.mapBatch(batch.getId());
+            } catch (MappingConfigurationException exception) {
+                log.error("Loi cau hinh mapping cho batch {}", batch.getId(), exception);
+                batchProcessor.markMappingConfigurationFailed(
+                        batch.getId(), "mapping configuration invalid: " + exception.getMessage());
             } catch (IOException e) {
                 log.error("Loi ghi file MNT cho batch {}", batch.getId(), e);
                 batchProcessor.markPendingWrite(batch.getId());
@@ -70,6 +75,9 @@ public class WorkDispatcher {
         } catch (IOException e) {
             log.error("Retry ghi loi, batch {} ve PENDING_WRITE", batch.getId(), e);
             batchProcessor.markPendingWrite(batch.getId());
+        } catch (MappingConfigurationException e) {
+            log.error("loi cau hinh, batch {} ve Fail", batch.getId(), e);
+            batchProcessor.markMappingConfigurationFailed(batch.getId(), e.getMessage());
         }
 
     }

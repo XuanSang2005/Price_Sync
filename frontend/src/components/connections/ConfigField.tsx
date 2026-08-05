@@ -55,7 +55,7 @@ function normalize(configKey: string, value: string) {
   return trimmed
 }
 
-export function validateConfigValue(configKey: string, rawValue: string): string | null {
+function validateConfigValue(configKey: string, rawValue: string): string | null {
   const value = rawValue.trim()
   if (!value) return 'Value is required'
   if (/\p{Cc}/u.test(value)) return 'Control characters are not allowed'

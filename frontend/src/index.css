@@ -149,7 +149,6 @@ body {
 
 @keyframes pip { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
 @keyframes fadein { from { opacity: 0; } to { opacity: 1; } }
-@keyframes drawerin { from { transform: translateX(20px); opacity: 0.4; } to { transform: translateX(0); opacity: 1; } }
 @keyframes toastin { from { transform: translateY(12px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
 
 @media (prefers-reduced-motion: reduce) {

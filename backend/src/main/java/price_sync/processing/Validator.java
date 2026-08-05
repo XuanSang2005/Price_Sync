@@ -13,9 +13,6 @@ import price_sync.domain.record.PriceRecord;
 @Component
 public class Validator {
 
-    // Validate NGỮ NGHĨA field CHUẨN (điều khiển giá thật) + kiểm field ĐỘNG BẮT BUỘC có mặt (required).
-    // KHÔNG kiểm KIỂU field động nữa (data_type đã bỏ) — hệ không hiểu nghĩa, HQ tự chịu nội dung;
-    // toàn vẹn file lo bằng escape (RFC-4180) ở builder chứ không phải shape-check ở đây.
     public Optional<String> validate(PriceRecord record, List<MappingRule> rules) {
         try {
             ChangeType.valueOf(record.getChangeType().toUpperCase());

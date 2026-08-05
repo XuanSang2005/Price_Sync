@@ -114,7 +114,8 @@ public class BatchProcessor {
             log.warn("Batch {} BI HUY: {}/{} records set aside (ti le hong {}%)",
                     batchId, setAside, records.size(), Math.round(failRate * 100));
             recordLog(batch.getId(), batch.getStatus(), setAside + "/" + records.size() + " set aside");
-            alertService.batchFailed(batch, "abort: " + setAside + "/" + records.size() + " record bi set aside (vuot nguong)");
+            alertService.batchFailed(batch,
+                    "abort: " + setAside + "/" + records.size() + " record bi set aside (vuot nguong)");
             return false;
         } else {
             log.info("Batch {} qua kiem dinh: {} VALID, {} SET_ASIDE - san sang cho MntRowMapper",
@@ -171,6 +172,14 @@ public class BatchProcessor {
         PriceBatch batch = priceBatchRepository.findById(batchId).orElseThrow(InvalidIdException::new);
         batch.markWriting();
         recordLog(batch.getId(), batch.getStatus(), null);
+    }
+
+    @Transactional
+    public void markMappingConfigurationFailed(@NonNull Long batchId, String reason) {
+        PriceBatch batch = priceBatchRepository.findById(batchId).orElseThrow(InvalidIdException::new);
+        batch.markFail();
+        recordLog(batch.getId(), batch.getStatus(), reason);
+        alertService.batchFailed(batch, reason);
     }
 
     @Transactional

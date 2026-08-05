@@ -2,7 +2,7 @@
 // Trang chỉ gọi hàm; đổi đường dẫn / thêm header chỉ phải sửa một chỗ.
 
 import type {
-  EventSummary, EventDetail, EventLog, EventFile, Health, ConfigItem,
+  EventDetail, EventLog, EventFile, Health, ConfigItem,
   EventPage, EventAttention, EventDashboard, EventProgress,
 } from '../types'
 
@@ -32,10 +32,6 @@ async function getJson<T>(url: string, signal?: AbortSignal): Promise<T> {
   const res = await fetch(url, { signal })
   if (!res.ok) throw await responseError(res, `Unable to load ${url}`)
   return res.json() as Promise<T>
-}
-
-export function fetchEvents(): Promise<EventSummary[]> {
-  return getJson('/api/v1/events')
 }
 
 export function fetchEventPage({ page, size = 50, status, search, signal }: {
@@ -79,11 +75,6 @@ export async function retryEvent(id: string): Promise<boolean> {
   const res = await fetch(`/api/v1/events/${id}/retry`, { method: 'POST' })
   if (!res.ok) throw await responseError(res, 'Retry failed')
   return res.status === 202
-}
-
-// Đếm batch theo từng trạng thái, vd {"WRITTEN":3,"FAILED":1,...}
-export function fetchMetrics(): Promise<Record<string, number>> {
-  return getJson('/api/v1/events/metrics')
 }
 
 export function fetchHealth(signal?: AbortSignal): Promise<Health> {

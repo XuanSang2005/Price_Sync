@@ -43,14 +43,6 @@ public class BatchLog {
         this.createdAt = OffsetDateTime.now();
     }
 
-    public Long getId() {
-        return id;
-    }
-
-    public Long getBatchId() {
-        return batchId;
-    }
-
     public BatchStatus getStatus() {
         return status;
     }

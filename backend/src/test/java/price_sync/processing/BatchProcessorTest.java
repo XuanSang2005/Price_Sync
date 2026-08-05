@@ -19,6 +19,8 @@ import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import price_sync.domain.batch.BatchLogRepository;
 import price_sync.domain.batch.BatchStatus;
 import price_sync.domain.config.ConfigRepository;
@@ -29,6 +31,7 @@ import price_sync.domain.batch.PriceBatchRepository;
 import price_sync.domain.record.PriceRecord;
 import price_sync.domain.record.PriceRecordRepository;
 import price_sync.domain.record.RecordStatus;
+import price_sync.mapping.engine.ValueMapParser;
 
 public class BatchProcessorTest {
 
@@ -40,9 +43,10 @@ public class BatchProcessorTest {
     private final ConfigRepository configRepository = mock(ConfigRepository.class);
     private final MappingRuleRepository mappingRuleRepository = mock(MappingRuleRepository.class);
     private final AlertService alertService = mock(AlertService.class);
+    private final ValueMapParser valueMapParser = new ValueMapParser(new ObjectMapper());
 
     private final BatchProcessor processor = new BatchProcessor(priceRecordRepository, new Validator(),
-            priceBatchRepository, new MntRowMapper(), builder, writer, batchLogRepository, configRepository,
+            priceBatchRepository, new MntRowMapper(valueMapParser), builder, writer, batchLogRepository, configRepository,
             mappingRuleRepository, alertService);
 
     // Bộ luật chuẩn (FDETL 7 cột + FDELE 3 cột) — MntRowMapper thật cần để dựng cột.

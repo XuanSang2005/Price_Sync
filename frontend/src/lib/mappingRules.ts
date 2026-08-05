@@ -22,7 +22,7 @@ export type Line = { key: string; x1: number; y1: number; x2: number; y2: number
 let nextKey = 1
 
 // Đổi một luật lấy từ API thành một cột nháp trên màn hình
-export function colFromRule(rule: MappingRule): Col {
+function colFromRule(rule: MappingRule): Col {
   return {
     key: 'r' + rule.id,
     json_field: rule.json_field,

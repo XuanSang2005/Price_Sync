@@ -12,30 +12,23 @@ import java.util.Optional;
 
 import org.springframework.stereotype.Component;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
-
 import price_sync.domain.record.ChangeType;
 import price_sync.domain.mapping.MappingRule;
 import price_sync.domain.record.PriceRecord;
 
-// MntRowMapper ĐỌC SỔ (mapping_rule) thay vì hardcode: mỗi record → chọn bộ luật theo record_type
-// (delete→FDELE, còn lại→FDETL) → lặp luật theo position → mỗi luật dựng một cột.
-// MntRowMapper vẫn là hàm THUẦN (không tự query DB): danh sách luật do BatchProcessor nạp rồi truyền vào,
-// nhờ vậy test chỉ cần new MntRowMapper() + tự dựng luật.
+
 @Component
 public class MntRowMapper {
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final ValueMapParser valueMapParser;
+
+    public MntRowMapper(ValueMapParser valueMapParser){
+        this.valueMapParser = valueMapParser;
+    }
 
     public Optional<MntRow> map(PriceRecord record, LocalDate businessDate, List<MappingRule> rules) {
         ChangeType changeType = ChangeType.valueOf(record.getChangeType().toUpperCase());
         MntRecordType recordType = (changeType == ChangeType.DELETE) ? MntRecordType.FDELE : MntRecordType.FDETL;
-
-        // Gom mọi field của record về một túi tên→giá-trị (đã format sẵn), khớp tên json_field trong sổ.
         Map<String, String> fields = buildFields(record, businessDate);
-
-        // Lấy đúng bộ luật của record_type này, sắp theo thứ tự cột.
         List<MappingRule> applicable = rules.stream()
                 .filter(rule -> rule.getRecordType().equals(recordType.name()))
                 .sorted(Comparator.comparingInt(MappingRule::getPosition))
@@ -45,7 +38,7 @@ public class MntRowMapper {
         for (MappingRule rule : applicable) {
             Optional<String> value = applyRule(rule, fields);
             if (value.isEmpty()) {
-                return Optional.empty(); // một luật báo "không map được" → cả record unmappable
+                return Optional.empty();
             }
             columns.add(value.get());
         }
@@ -64,7 +57,6 @@ public class MntRowMapper {
         fields.put("change_type", formatValue(record.getChangeType()));
         fields.put("change_id", formatValue(record.getChangeId()));
         fields.put("version", formatValue(record.getVersion()));
-        // effective_start: HQ không gửi → mặc định = ngày mai (businessDate + 1)
         fields.put("effective_start", record.getEffectiveStart() != null
                 ? formatValue(record.getEffectiveStart())
                 : businessDate.plusDays(1).toString());
@@ -106,7 +98,7 @@ public class MntRowMapper {
                     return Optional.empty();
                 }
                 String prefix = raw.split("_", 2)[0].toUpperCase();
-                String mapped = parseMap(rule.getRuleValue()).get(prefix);
+                String mapped = valueMapParser.parse(rule.getRuleValue()).get(prefix);
                 return mapped != null ? Optional.of(mapped) : Optional.empty();
             }
             case "SPLIT": {
@@ -118,18 +110,6 @@ public class MntRowMapper {
             }
             default:
                 return Optional.of(raw != null ? raw : "");
-        }
-    }
-
-    private Map<String, String> parseMap(String json) {
-        if (json == null) {
-            return Map.of();
-        }
-        try {
-            return objectMapper.readValue(json, new TypeReference<Map<String, String>>() {
-            });
-        } catch (JsonProcessingException e) {
-            return Map.of();
         }
     }
 }

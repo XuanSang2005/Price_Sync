@@ -35,8 +35,6 @@ public class MappingRule {
     @Column(nullable = false)
     private boolean required;
 
-    // Cột chuẩn (hợp đồng Oracle) — khoá cứng ở UI: không đổi nguồn / không xoá.
-    // Chỉ true cho các dòng SEED chuẩn (V19 set); rule tạo qua API luôn false (constructor không set).
     @Column(nullable = false)
     private boolean locked;
 

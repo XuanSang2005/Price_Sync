@@ -13,7 +13,7 @@ const BATCH: Record<string, Tone> = {
 }
 const FALLBACK: Tone = { text: 'text-muted', bg: 'bg-surface2', dot: 'bg-faint' }
 
-export function batchTone(status: string): Tone {
+function batchTone(status: string): Tone {
   return BATCH[status] ?? FALLBACK
 }
 

@@ -51,12 +51,6 @@ public class EventService {
         this.configRepository = configRepository;
     }
 
-    public List<EventSummary> getEvents() {
-        return priceBatchRepository.findAll(Sort.by(Sort.Direction.DESC, "id")).stream()
-                .map(this::toSummary)
-                .toList();
-    }
-
     @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
     public EventPage getEventsPage(int page, int size, BatchStatus status, String search) {
         PageRequest request = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "id"));

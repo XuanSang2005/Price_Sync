@@ -10,11 +10,14 @@ import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import price_sync.domain.mapping.MappingRule;
 import price_sync.domain.record.PriceRecord;
 
 public class MntRowMapperTest {
-    private final MntRowMapper mapper = new MntRowMapper();
+    private final ValueMapParser valueMapParser = new ValueMapParser(new ObjectMapper());
+    private final MntRowMapper mapper = new MntRowMapper(valueMapParser);
     private final LocalDate bussiLocalDate = LocalDate.of(2026, 7, 15);
 
     // Bộ luật CHUẨN khớp seed V14+V15 (FDETL 7 cột, FDELE 3 cột) — MntRowMapper giờ đọc luật, test tự cấp.

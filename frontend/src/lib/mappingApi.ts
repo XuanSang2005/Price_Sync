@@ -17,8 +17,6 @@ export function fetchPreview(signal?: AbortSignal): Promise<MappingPreview> {
 
 // Một cột gửi lên server khi Save (vị trí = thứ tự trong mảng)
 export type SaveColumn = {
-  record_type: string
-  position: number
   json_field: string
   mnt_column: string
   rule_type: string

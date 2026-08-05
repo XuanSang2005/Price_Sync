@@ -20,10 +20,6 @@ public class Config {
     @Column(name="config_value")
     String configValue;
 
-    public Long getId() {
-        return id;
-    }
-
     public String getConfigKey() {
         return configKey;
     }

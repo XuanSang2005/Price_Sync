@@ -120,7 +120,7 @@ export type MappingPreview = {
 // Một luật mapping (GET /api/v1/mappings) - mỗi luật = một cột của file MNT
 export type MappingRule = {
   id: number
-  record_type: string // FDETL | FDELE | FHEAD | FTAIL
+  record_type: string // FDETL | FDELE
   position: number
   json_field: string
   mnt_column: string

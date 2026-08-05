@@ -20,7 +20,6 @@ import price_sync.domain.mapping.MappingRule;
 import price_sync.domain.mapping.MappingRuleRepository;
 import price_sync.domain.record.PriceRecord;
 import price_sync.domain.record.PriceRecordRepository;
-import price_sync.error.InvalidIdException;
 import price_sync.error.LockedMappingException;
 import price_sync.mapping.dto.MappingCreateRequest;
 import price_sync.mapping.dto.MappingMeta;
@@ -32,17 +31,20 @@ import price_sync.mapping.engine.MntRow;
 
 @Service
 public class MappingService {
+    private final MappingRuleValidator mappingRuleValidator;
     private final MappingRuleRepository mappingRuleRepository;
     private final PriceBatchRepository priceBatchRepository;
     private final PriceRecordRepository priceRecordRepository;
     private final MntRowMapper mapper;
 
     public MappingService(MappingRuleRepository mappingRuleRepository, PriceBatchRepository priceBatchRepository,
-            PriceRecordRepository priceRecordRepository, MntRowMapper mapper) {
+            PriceRecordRepository priceRecordRepository, MntRowMapper mapper,
+            MappingRuleValidator mappingRuleValidator) {
         this.mappingRuleRepository = mappingRuleRepository;
         this.priceBatchRepository = priceBatchRepository;
         this.priceRecordRepository = priceRecordRepository;
         this.mapper = mapper;
+        this.mappingRuleValidator = mappingRuleValidator;
     }
 
     @Transactional(readOnly = true)
@@ -54,31 +56,16 @@ public class MappingService {
                 .toList();
     }
 
-    // Cột CHUẨN nhận diện bằng tên cột MNT (hợp đồng output cố định). Đây là HỢP ĐỒNG:
-    // server GIỮ NGUYÊN — client (kể cả curl thô) KHÔNG tạo trùng / xoá / sửa / bỏ sót được.
-    private static final Set<String> STANDARD_MNT_COLUMNS =
-            Set.of("ITEM", "LOC_TYPE", "LOCATION", "PRICE", "CURRENCY", "EFF_START", "EFF_END");
-
-    @Transactional
-    public void create(MappingCreateRequest req) {
-        if (STANDARD_MNT_COLUMNS.contains(req.mntColumn())) {
-            throw new LockedMappingException(); // cột chuẩn đã có sẵn, khoá cứng — không tạo trùng
-        }
-        mappingRuleRepository.save(new MappingRule(req.recordType(), req.position(), req.jsonField(),
-                req.mntColumn(), req.ruleType(), req.ruleValue(), req.required()));
-    }
-
-    @Transactional
-    public void delete(Long id) {
-        MappingRule rule = mappingRuleRepository.findById(id).orElseThrow(InvalidIdException::new);
-        if (rule.isLocked()) {
-            throw new LockedMappingException(); // không cho xoá cột chuẩn
-        }
-        mappingRuleRepository.delete(rule);
-    }
+    // Cột CHUẨN nhận diện bằng tên cột MNT (hợp đồng output cố định). Đây là HỢP
+    // ĐỒNG:
+    // server GIỮ NGUYÊN — client (kể cả curl thô) KHÔNG tạo trùng / xoá / sửa / bỏ
+    // sót được.
+    private static final Set<String> STANDARD_MNT_COLUMNS = Set.of("ITEM", "LOC_TYPE", "LOCATION", "PRICE", "CURRENCY",
+            "EFF_START", "EFF_END");
 
     // Bulk-replace CHỈ các cột ĐỘNG của một record_type (bấm Save trên UI kéo-thả).
-    // Cột chuẩn (locked) là hợp đồng: server GIỮ NGUYÊN từ DB, bỏ qua mọi bản client gửi lên —
+    // Cột chuẩn (locked) là hợp đồng: server GIỮ NGUYÊN từ DB, bỏ qua mọi bản
+    // client gửi lên —
     // nên dù client repoint/reorder/omit một cột chuẩn thì file MNT vẫn đúng.
     @Transactional
     public void replace(String recordType, List<MappingCreateRequest> rules) {
@@ -87,26 +74,38 @@ public class MappingService {
                 .toList();
         int maxLockedPos = current.stream().filter(MappingRule::isLocked)
                 .mapToInt(MappingRule::getPosition).max().orElse(0);
-        // Tên cột chuẩn ĐANG CÓ THẬT của record_type này. Dùng để phân biệt hai ca trùng tên:
-        //   - client gửi lại đúng cột chuẩn của tab đó  → bỏ qua, server giữ bản DB (hợp đồng);
-        //   - client chiếm dụng một tên chuẩn KHÔNG thuộc tab đó (vd PRICE ở FDELE) → 409, không nuốt im lặng.
+        // Tên cột chuẩn ĐANG CÓ THẬT của record_type này. Dùng để phân biệt hai ca
+        // trùng tên:
+        // - client gửi lại đúng cột chuẩn của tab đó → bỏ qua, server giữ bản DB (hợp
+        // đồng);
+        // - client chiếm dụng một tên chuẩn KHÔNG thuộc tab đó (vd PRICE ở FDELE) →
+        // 409, không nuốt im lặng.
         Set<String> lockedNames = current.stream().filter(MappingRule::isLocked)
                 .map(MappingRule::getMntColumn)
                 .collect(Collectors.toSet());
 
-        // Kiểm TOÀN BỘ payload TRƯỚC khi ghi: sai một cột thì cả lệnh Save hỏng, DB không đổi nửa vời.
+        // Kiểm TOÀN BỘ payload TRƯỚC khi ghi: sai một cột thì cả lệnh Save hỏng, DB
+        // không đổi nửa vời.
         for (MappingCreateRequest req : rules) {
-            if (!lockedNames.contains(req.mntColumn()) && STANDARD_MNT_COLUMNS.contains(req.mntColumn())) {
+            if (lockedNames.contains(req.mntColumn())) {
+                continue;
+            }
+
+            if (STANDARD_MNT_COLUMNS.contains(req.mntColumn())) {
                 throw new LockedMappingException(
-                        "column " + req.mntColumn() + " is a standard MNT column (Oracle contract) "
+                        "column " + req.mntColumn()
+                                + " is a standard MNT column (Oracle contract) "
                                 + "and cannot be used as a custom column in " + recordType);
             }
+
+            mappingRuleValidator.validate(req);
         }
 
         // xoá CHỈ cột động cũ, giữ nguyên cột chuẩn
         current.stream().filter(r -> !r.isLocked()).forEach(mappingRuleRepository::delete);
         mappingRuleRepository.flush(); // ép DELETE xuống trước, tránh INSERT đụng uq_mapping_slot
-        // chèn cột động mới, position nối SAU khối cột chuẩn; cột chuẩn client gửi thì bỏ qua
+        // chèn cột động mới, position nối SAU khối cột chuẩn; cột chuẩn client gửi thì
+        // bỏ qua
         int pos = maxLockedPos;
         for (MappingCreateRequest req : rules) {
             if (lockedNames.contains(req.mntColumn())) {
@@ -121,7 +120,8 @@ public class MappingService {
     // Số record mẫu lấy cho MỖI record_type trong preview.
     private static final int SAMPLE_PER_TYPE = 1;
 
-    // Preview THẬT: lấy vài record của batch gần nhất có dữ liệu, áp luật hiện tại → before/after.
+    // Preview THẬT: lấy vài record của batch gần nhất có dữ liệu, áp luật hiện tại
+    // → before/after.
     @Transactional(readOnly = true)
     public PreviewResponse preview() {
         List<MappingRule> rules = mappingRuleRepository.findAll();
@@ -130,7 +130,8 @@ public class MappingService {
             PriceBatch batch = latestBatch.get();
             List<PriceRecord> records = priceRecordRepository.findByBatchId(batch.getId());
             LocalDate businessDate = batch.getGeneratedAt().toLocalDate();
-            // Lấy tối đa 1 record MỖI loại (FDETL/FDELE) — preview chỉ cần một ví dụ để soi cột,
+            // Lấy tối đa 1 record MỖI loại (FDETL/FDELE) — preview chỉ cần một ví dụ để soi
+            // cột,
             // nhưng vẫn phải đủ cả hai loại để tab nào cũng có mẫu (tránh "No sample" oan).
             List<PriceRecord> sample = new ArrayList<>();
             int det = 0;
@@ -166,18 +167,23 @@ public class MappingService {
         return new PreviewResponse(null, null, List.of());
     }
 
-    // Field nguồn CỐ ĐỊNH — thứ tự TẤT ĐỊNH, khớp cột đích bên phải (thay reflection getMethods() vô định).
-    // Phải KHỚP đúng các field MntRowMapper.buildFields dựng ra (9 field không phải nội bộ).
+    // Field nguồn CỐ ĐỊNH — thứ tự TẤT ĐỊNH, khớp cột đích bên phải (thay
+    // reflection getMethods() vô định).
+    // Phải KHỚP đúng các field MntRowMapper.buildFields dựng ra (9 field không phải
+    // nội bộ).
     private static final List<String> FIXED_SOURCE_FIELDS = List.of(
             "item_id", "store_id_or_zone", "price", "currency",
             "effective_start", "effective_end", "change_type", "change_id", "version");
 
-    // Metadata cho UI: source_fields = field cố định (thứ tự trên) + field ĐỘNG đã khai trong sổ (promo_code…);
-    // record/rule/standard/data types là hằng single-source ở backend (không để FE hardcode).
+    // Metadata cho UI: source_fields = field cố định (thứ tự trên) + field ĐỘNG đã
+    // khai trong sổ (promo_code…);
+    // record/rule/standard/data types là hằng single-source ở backend (không để FE
+    // hardcode).
     @Transactional(readOnly = true)
     public MappingMeta meta() {
         Set<String> fields = new LinkedHashSet<>(FIXED_SOURCE_FIELDS);
-        // Nối field ĐỘNG (extras như promo_code) khai trong sổ; LinkedHashSet giữ thứ tự + tự dedup.
+        // Nối field ĐỘNG (extras như promo_code) khai trong sổ; LinkedHashSet giữ thứ
+        // tự + tự dedup.
         for (MappingRule r : mappingRuleRepository.findAll()) {
             fields.add(r.getJsonField());
         }

@@ -6,10 +6,6 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 // Cột chuẩn (hợp đồng Oracle) — không cho tạo trùng / xoá / sửa qua API. 409 CONFLICT.
 @ResponseStatus(HttpStatus.CONFLICT)
 public class LockedMappingException extends RuntimeException {
-    public LockedMappingException() {
-        super("standard mapping column is locked (Oracle contract)");
-    }
-
     // Kèm tên cột để console hiện đúng chỗ sai, không chỉ "xung đột".
     public LockedMappingException(String message) {
         super(message);
